@@ -1,0 +1,15 @@
+# CookieCore messages (MiniMessage: https://docs.advntr.dev/minimessage/format.html).
+# Placeholders are written <like_this> and are filled in by the plugin; names typed by players are never parsed as MiniMessage.
+# <prefix> is the value of "prefix" below. Apply changes with /cookiecore reload.
+
+prefix: "<gold>Cookie<yellow>Core</yellow> <dark_gray>»</dark_gray></gold> "
+
+command:
+  usage: "<prefix><gray>Usage: <white>/cookiecore [version|reload]</white></gray>"
+  no-permission: "<prefix><red>You do not have permission to do that.</red>"
+  unknown-player: "<prefix><red>No player named <white><name></white> has joined this server before.</red>"
+  invalid-duration: "<red>'<input>' is not a duration. Use something like 30m, 12h, 7d or 1d12h.</red>"
+  reloaded: "<prefix><green>Configuration reloaded.</green>"
+  reload-failed: "<prefix><red>Reload finished with <white><count></white> problem(s); the previous values were kept where needed:</red>"
+  reload-problem: "<dark_gray> - </dark_gray><red><problem></red>"
+  version: "<prefix><gray>CookieCore <white><version></white> on <white><server></white> <dark_gray>(<database>)</dark_gray></gray>"

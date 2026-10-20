@@ -1,0 +1,36 @@
+# CookieCore sounds: feedback event -> sound. Retune here, no code changes needed.
+# The plugin plays sounds only through these event names (the sound service is the only place that does).
+#
+# Fields per event:
+#   key        the sound to play for players who use custom sounds. Core ships no resource pack yet,
+#              so these are vanilla keys too
+#   fallback   vanilla minecraft:... sound, played when the player has no custom sounds (today: everybody)
+#   volume     0 < volume <= 1.0. Above 1.0 only widens the hearing range, it does not get louder
+#   pitch-min  lowest random pitch (0.5 - 2.0); the plugin picks a random pitch per play
+#   pitch-max  highest random pitch (>= pitch-min, <= 2.0)
+#   source     sound category (lower case): master, music, record, weather, block, hostile, neutral,
+#              player, ambient, voice, ui
+
+ui_confirm:
+  key: "minecraft:block.note_block.pling"
+  fallback: "minecraft:block.note_block.pling"
+  volume: 0.5
+  pitch-min: 1.4
+  pitch-max: 1.4
+  source: ui
+
+ui_error:
+  key: "minecraft:block.note_block.bass"
+  fallback: "minecraft:block.note_block.bass"
+  volume: 0.5
+  pitch-min: 0.8
+  pitch-max: 0.8
+  source: ui
+
+ui_notify:
+  key: "minecraft:entity.experience_orb.pickup"
+  fallback: "minecraft:entity.experience_orb.pickup"
+  volume: 0.4
+  pitch-min: 1.2
+  pitch-max: 1.2
+  source: ui
