@@ -1,6 +1,6 @@
 # core-foundation
 
-**Status:** planned  <!-- planned | in progress | review | done -->
+**Status:** in progress  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-20 · **Depends on:** none (phase 0 of [ROADMAP](ROADMAP.md))
 
 ## Goal
@@ -32,7 +32,7 @@ As a server owner, I drop CookieCore on a Paper 26.3 server and it boots cleanly
 | Kind | What | Owner |
 |---|---|---|
 | model / texture / glyph | none | model-designer |
-| sound | shared UI events: `ui_confirm`, `ui_error`, `ui_notify` (short, quiet, original; used by every later phase) | sound-designer |
+| sound | none yet: the shared UI events below use **vanilla keys** (sound-designer cannot write `sounds.yml` or a pack folder in Core under the current `ownership.json`; custom sounds are a later follow-up once the user decides) | plugin-coder (`sounds.yml`) |
 | effect | none | vfx-designer |
 
 ## Balance impact
@@ -52,9 +52,9 @@ None blocking (defaults in [ROADMAP](ROADMAP.md) decisions D1 to D6).
 ## Contract (fixed names; change only via the orchestrator)
 | Kind | ID | Owner | Notes |
 |---|---|---|---|
-| sound event | `ui_confirm` | sound-designer | key `cookiecore:ui.confirm`, fallback `minecraft:block.note_block.pling`; short, soft, rising |
-| sound event | `ui_error` | sound-designer | key `cookiecore:ui.error`, fallback `minecraft:block.note_block.bass`; short, dull |
-| sound event | `ui_notify` | sound-designer | key `cookiecore:ui.notify`, fallback `minecraft:entity.experience_orb.pickup`; subtle ping |
+| sound event | `ui_confirm` | plugin-coder | vanilla `minecraft:block.note_block.pling`, volume 0.5, pitch 1.4 |
+| sound event | `ui_error` | plugin-coder | vanilla `minecraft:block.note_block.bass`, volume 0.5, pitch 0.8 |
+| sound event | `ui_notify` | plugin-coder | vanilla `minecraft:entity.experience_orb.pickup`, volume 0.4, pitch 1.2 |
 | message key | `command.no-permission`, `command.unknown-player`, `command.reloaded`, `command.reload-failed`, `command.version` | plugin-coder | in `messages.yml` |
 | config key | `config.yml: server.name`, `database.type` (`h2`\|`mariadb`), `database.file`, `database.host`, `database.port`, `database.name`, `database.user`, `database.password` | plugin-coder | |
 | permission | `cookiecore.admin.reload`, `cookiecore.admin.version` | plugin-coder | `Perm` constants |
@@ -64,7 +64,6 @@ None blocking (defaults in [ROADMAP](ROADMAP.md) decisions D1 to D6).
 | Agent | Task | Needs (gate) | Branch |
 |---|---|---|---|
 | resource-pack-researcher | write `docs/research/core-paper-apis.md` (5 questions above) | — | feature branch (docs) |
-| sound-designer | three UI sounds as `.ogg` plus `sounds.yml` and specs, pack folder `cookiecore` namespace | contract | `core-foundation/sound-designer` |
 | plugin-coder | everything under acceptance criteria except sounds files and tests | contract, research note on the feature branch | `core-foundation/plugin-coder` |
 | plugin-tester | review each branch, write `ArchitectureRulesTest` and service tests, create `docs/architecture.md`, integration review | owner DONE | (reviewed branch) |
 
@@ -72,16 +71,14 @@ None blocking (defaults in [ROADMAP](ROADMAP.md) decisions D1 to D6).
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
 | resource-pack-researcher | planned | feature branch | | |
-| sound-designer | planned | `core-foundation/sound-designer` | | |
 | plugin-coder | planned | `core-foundation/plugin-coder` | | |
 | plugin-tester | planned | | | |
 
 ## Merge order
 1. research note (direct on the feature branch)
-2. sound-designer
-3. plugin-coder
+2. plugin-coder
 
 ## Needs human review
-- [ ] Audition the three UI sounds (`ui_confirm`, `ui_error`, `ui_notify`)
+- [ ] Listen to the three vanilla UI sounds in game (`ui_confirm`, `ui_error`, `ui_notify`); decide later whether Core gets a resource pack and custom sounds (needs `ownership.json` paths for the sound-designer)
 - [ ] `mise.toml` changes (new tasks) and `.gitattributes` if touched
 - [ ] Start a Paper 26.3 test server with the jar: clean boot log, `/cookiecore version`, `/cookiecore reload`, `players` table filled after a join

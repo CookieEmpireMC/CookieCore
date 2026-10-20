@@ -21,6 +21,7 @@ CookieCore is the server's **base layer**: the things every player and staff mem
 | D4 | English default text, all editable in `messages.yml` | one file to translate later |
 | D5 | Brigadier commands (Paper lifecycle API), no `plugin.yml` command entries | native completion and validation |
 | D6 | IP bans, appeals, web panel: **out of scope** for now | keeps phases small |
+| D7 | Feedback sounds are **vanilla** for now. The sound-designer has no pack folder or `sounds.yml` path in Core's `ownership.json`, and Core has no resource pack. Wherever a phase below lists the sound-designer, it applies only after the user adds those paths | respects the human-controlled ownership map |
 
 ## Phases (one feature = one branch = one PR; the user merges each into `main`)
 
@@ -28,7 +29,7 @@ Each phase starts only when the previous one is merged (the workflow gate "Depen
 
 | Phase | Feature | What the player / staff gets | Agents involved |
 |---|---|---|---|
-| **0** | `core-foundation` | Nothing visible yet except a clean boot log, `/cookiecore reload` and `/cookiecore version`. Underneath: build, config, messages, sound service, permission helper, Brigadier command helper, storage on an IO thread, player name cache, small public API, architecture tests, mise tasks. | researcher, plugin-coder, plugin-tester (sound-designer for the shared UI sounds) |
+| **0** | `core-foundation` | Nothing visible yet except a clean boot log, `/cookiecore reload` and `/cookiecore version`. Underneath: build, config, messages, sound service, permission helper, Brigadier command helper, storage on an IO thread, player name cache, small public API, architecture tests, mise tasks. | researcher, plugin-coder, plugin-tester |
 | **1** | `core-tab` | Tab list with header and footer (server name, online count, ping/TPS line), players sorted by rank with prefix, no flicker, no packet spam. | researcher, plugin-coder, plugin-tester |
 | **2** | `core-scoreboard` | Sidebar per player without flicker or red score numbers, lines from config, **placeholder registry** in the API so CookieClicker can later show cookies/CPS, `/scoreboard toggle`. | researcher, plugin-coder, plugin-tester |
 | **3** | `core-gamemode` | `/gamemode` (`/gm`), `/gmc /gms /gma /gmsp`, optional target, completion, confirmation sound; plus `/fly` and `/speed` as small staff comfort. | plugin-coder, plugin-tester, sound-designer |
