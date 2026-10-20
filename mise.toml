@@ -1,0 +1,9 @@
+# Same pins as CookieClicker (Paper 26.x: Java 25). Build tasks arrive with the first plugin code.
+[tools]
+java = "temurin-25"
+maven = "3.9"
+python = "3.12"
+
+[tasks.check]
+description = "Full check (placeholder until there is code: passes on an empty project)"
+run = "if [ -f pom.xml ]; then mvn -B clean verify; else echo 'no pom.xml yet: nothing to build'; fi"
