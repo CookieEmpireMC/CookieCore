@@ -1,0 +1,97 @@
+{
+  "_comment": [
+    "Who may edit what in CookieCore. Human-controlled: only the user changes this file (the orchestrator only when the user asks).",
+    "Format and rules: the bakery-context skill of the bakery-team plugin (CookieEmpireMC/CookieMemory). Paths get more specific once CookieCore has code."
+  ],
+  "orchestrator": {
+    "name": "Rickroll Rick",
+    "email": "rick@bakery.invalid",
+    "paths": [
+      "CLAUDE.md",
+      "README.md",
+      "docs/briefs/**",
+      ".github/**"
+    ]
+  },
+  "agents": {
+    "resource-pack-researcher": {
+      "name": "Citation Cindy",
+      "email": "cindy@bakery.invalid",
+      "paths": [
+        "docs/research/**",
+        ".claude/agent-memory/bakery-team-resource-pack-researcher/**"
+      ]
+    },
+    "plugin-coder": {
+      "name": "Works4Me Wesly",
+      "email": "wesly@bakery.invalid",
+      "paths": [
+        "src/main/**",
+        "pom.xml",
+        "plugin.yml",
+        "paper-plugin.yml",
+        "mise.toml",
+        ".gitignore",
+        ".gitattributes",
+        "tools/**",
+        "docs/paper-*.md",
+        "docs/toolchain.md",
+        "docs/minimessage.md",
+        "docs/integrations.md",
+        ".claude/agent-memory/bakery-team-plugin-coder/**"
+      ]
+    },
+    "plugin-tester": {
+      "name": "Gandalf",
+      "email": "gandalf@bakery.invalid",
+      "paths": [
+        "src/test/**",
+        "tools/**/test_*.py",
+        "docs/reviews/**",
+        "docs/architecture.md",
+        ".claude/agent-memory/bakery-team-plugin-tester/**"
+      ]
+    },
+    "model-designer": {
+      "name": "Pixel Pat",
+      "email": "pat@bakery.invalid",
+      "paths": [
+        "design/**",
+        ".claude/agent-memory/bakery-team-model-designer/**"
+      ]
+    },
+    "sound-designer": {
+      "name": "Bassboost Bruno",
+      "email": "bruno@bakery.invalid",
+      "paths": [
+        "design/sound-*",
+        "design/sounds.md",
+        ".claude/agent-memory/bakery-team-sound-designer/**"
+      ]
+    },
+    "vfx-designer": {
+      "name": "Flare Larry",
+      "email": "larry@bakery.invalid",
+      "paths": [
+        "design/vfx-*",
+        "design/effects.md",
+        ".claude/agent-memory/bakery-team-vfx-designer/**"
+      ]
+    },
+    "balance-designer": {
+      "name": "Stonks Stan",
+      "email": "stan@bakery.invalid",
+      "paths": [
+        "docs/balance/**",
+        ".claude/agent-memory/bakery-team-balance-designer/**"
+      ]
+    }
+  },
+  "human_controlled": [
+    ".claude/ownership.json",
+    ".claude/settings.json",
+    ".claude/agents/**",
+    ".claude/skills/**",
+    ".claude/hooks/**"
+  ]
+}

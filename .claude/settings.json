@@ -1,0 +1,10 @@
+{
+  "extraKnownMarketplaces": {
+    "cookie-memory": {
+      "source": { "source": "github", "repo": "CookieEmpireMC/CookieMemory" },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": { "bakery-team@cookie-memory": true },
+  "worktree": { "baseRef": "head" }
+}
