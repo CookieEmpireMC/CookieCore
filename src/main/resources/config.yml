@@ -1,0 +1,24 @@
+# CookieCore - main config.
+# All player-facing text is in messages.yml (MiniMessage), sounds in sounds.yml.
+# Apply changes with /cookiecore reload (except database.*: restart the server).
+
+server:
+  # Shown in /cookiecore version and (later) in the tab list and scoreboard
+  name: "Cookie Empire"
+
+database:
+  # h2 (embedded file, no setup) or mariadb
+  type: h2
+  # Prefix for every table (letters, digits, _). Lets Core share a MariaDB database with other plugins.
+  table-prefix: core_
+  # On shutdown, wait at most this many seconds for pending writes to finish
+  shutdown-timeout-seconds: 10
+  # --- h2 ---
+  # Relative to plugins/CookieCore/ (H2 adds .mv.db)
+  file: data/core
+  # --- mariadb ---
+  host: localhost
+  port: 3306
+  name: cookiecore
+  user: cookiecore
+  password: ""
