@@ -1,6 +1,6 @@
 # Project guide for Claude: CookieCore
 
-**CookieCore** is the Cookie Empire core plugin for Paper (GDD §9.1: "core plugin"). It is **empty for now**: its first feature decides what it does. Gameplay lives in [CookieClicker](https://github.com/CookieEmpireMC/CookieClicker).
+**CookieCore** is the Cookie Empire core plugin for Paper (GDD §9.1: "core plugin"). It is the server's **base layer**: tab list, scoreboard, gamemode commands and staff moderation (kick, ban, mute), kept small, tight and polished. Phases and decisions are in `docs/briefs/ROADMAP.md`; one feature per phase, the user merges each PR. Gameplay lives in [CookieClicker](https://github.com/CookieEmpireMC/CookieClicker); Core never depends on it.
 
 ## Shared team and knowledge
 The team comes from the **`bakery-team`** plugin ([CookieEmpireMC/CookieMemory](https://github.com/CookieEmpireMC/CookieMemory)), enabled in `.claude/settings.json`:
