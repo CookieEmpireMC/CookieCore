@@ -1,6 +1,6 @@
 # core-foundation
 
-**Status:** in progress  <!-- planned | in progress | review | done -->
+**Status:** review (draft PR, unfinished)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-20 · **Depends on:** none (phase 0 of [ROADMAP](ROADMAP.md))
 
 ## Goal
@@ -70,9 +70,21 @@ None blocking (defaults in [ROADMAP](ROADMAP.md) decisions D1 to D6).
 ## Status
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
-| resource-pack-researcher | planned | feature branch | | |
-| plugin-coder | planned | `core-foundation/plugin-coder` | | |
-| plugin-tester | planned | | | |
+| resource-pack-researcher | done | feature branch | n/a | `docs/research/core-paper-apis.md` committed |
+| plugin-coder | stopped (WIP merged) | `core-foundation/plugin-coder` | not reviewed | skeleton compiles (`mvn verify` exit 0); stopped by the user mid-task |
+| plugin-tester | not started | | | |
+
+## Recap (2026-10-20, closed for the night)
+**Done:** roadmap and brief; research note; coder skeleton: `pom.xml`, `plugin.yml`, `config.yml`, `messages.yml`, `sounds.yml` (vanilla keys), `Perm`, `Messages`, `SoundService` + parser, `PluginSettings`/`YamlFiles`, storage (H2/MariaDB factory, `StorageThread`, `SchemaMigrator`/`Migrations`, `JdbcPlayerStore`), `PlayerDirectory` + `PlayerListener`, `CookieCoreApi` (`api/`).
+
+**Still open (next session):**
+1. `CookieCore` main class (plugin.yml already points to `dev.casperrs.cookieCore.CookieCore`): enable/disable order, wiring, `ServicesManager` registration
+2. Brigadier helper and `/cookiecore version|reload` (the `command/` package is empty); custom offline-player and duration argument types as in the research note
+3. Unit tests (parsers, Messages, SoundConfigParser, PlayerDirectory, schema migration on H2)
+4. Port the mise tasks `build`, `test`, `check`, `team`, `ownership-check` and `tools/ownership` from CookieClicker (`mise.toml`: needs human review)
+5. plugin-tester: `ArchitectureRulesTest`, `docs/architecture.md`, review of the coder branch and integration review; only then flip this brief to done
+
+**Not verified:** nothing has been reviewed by Gandalf, `ownership-check` was not run (task not ported yet), the plugin has never been started on a Paper server.
 
 ## Merge order
 1. research note (direct on the feature branch)
