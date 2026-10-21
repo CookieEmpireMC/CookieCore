@@ -53,6 +53,14 @@ public record DatabaseSettings(Type type, Path h2File, String host, int port, St
         };
     }
 
+    /** Never prints the password (a record would), so logging the settings cannot leak it. */
+    @Override
+    public String toString() {
+        return "DatabaseSettings[type=" + type + ", h2File=" + h2File + ", host=" + host + ", port=" + port
+                + ", database=" + database + ", username=" + username + ", password=" + (password.isEmpty() ? "" : "***")
+                + ", tablePrefix=" + tablePrefix + "]";
+    }
+
     /** For log lines: no password. */
     public String describe() {
         return switch (type) {

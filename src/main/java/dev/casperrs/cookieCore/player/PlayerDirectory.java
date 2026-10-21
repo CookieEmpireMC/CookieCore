@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.function.LongSupplier;
@@ -42,7 +43,7 @@ public final class PlayerDirectory implements PlayerLookup {
     private final Logger log;
     private final LongSupplier clock;
 
-    private final ConcurrentHashMap<String, PlayerRef> byName = new ConcurrentHashMap<>();
+    private final ConcurrentSkipListMap<String, PlayerRef> byName = new ConcurrentSkipListMap<>();
     private final ConcurrentHashMap<UUID, PlayerRef> byId = new ConcurrentHashMap<>();
     /** Players whose entry came from a live join; the warm-up must not overwrite them with older database rows. */
     private final Set<UUID> live = new HashSet<>();
@@ -76,7 +77,8 @@ public final class PlayerDirectory implements PlayerLookup {
                 }
                 storageUp = true;
                 log.info("Loaded " + all.size() + " known player(s)");
-            } catch (StorageException e) {
+            } catch (StorageException | RuntimeException e) {
+                storageUp = false;
                 log.log(Level.SEVERE, "Database unavailable: player names are kept in memory only until the next restart", e);
             } finally {
                 done.complete(null);
@@ -128,12 +130,23 @@ public final class PlayerDirectory implements PlayerLookup {
 
     @Override
     public Optional<PlayerRef> cached(UUID uuid) {
-        return Optional.ofNullable(byId.get(uuid));
+        return uuid == null ? Optional.empty() : Optional.ofNullable(byId.get(uuid));
     }
 
     /** A read-only live view of every cached player (for tab completion: filter, do not copy). */
     public Collection<PlayerRef> cachedPlayers() {
         return Collections.unmodifiableCollection(byName.values());
+    }
+
+    /**
+     * Names (as spelled when they last joined) that start with {@code lowerCasePrefix}, in alphabetical order, at most
+     * {@code limit}. O(log N + limit): for tab completion, so the cost does not grow with the number of known players.
+     */
+    public List<String> namesStartingWith(String lowerCasePrefix, int limit) {
+        return byName.subMap(lowerCasePrefix, true, lowerCasePrefix + Character.MAX_VALUE, true).values().stream()
+                .limit(limit)
+                .map(PlayerRef::name)
+                .toList();
     }
 
     @Override
@@ -143,15 +156,36 @@ public final class PlayerDirectory implements PlayerLookup {
             return CompletableFuture.completedFuture(hit);
         }
         CompletableFuture<Optional<PlayerRef>> result = new CompletableFuture<>();
-        io.execute(() -> {
-            try {
-                Optional<PlayerRef> found = store.findByName(name.trim()).map(this::merge);
-                main.execute(() -> result.complete(found));
-            } catch (StorageException e) {
-                main.execute(() -> result.completeExceptionally(e));
-            }
-        });
+        try {
+            io.execute(() -> {
+                Optional<PlayerRef> found = null;
+                Throwable error = null;
+                try {
+                    found = store.findByName(name.trim()).map(this::merge);
+                } catch (StorageException | RuntimeException e) {
+                    error = e;
+                }
+                completeOnMain(result, found, error);
+            });
+        } catch (RejectedExecutionException e) {
+            result.completeExceptionally(e); // storage is shut down
+        }
         return result;
+    }
+
+    /** Hands the outcome to the main thread; if that is gone (plugin disabled) the future fails instead of hanging. */
+    private <T> void completeOnMain(CompletableFuture<T> future, T value, Throwable error) {
+        try {
+            main.execute(() -> {
+                if (error != null) {
+                    future.completeExceptionally(error);
+                } else {
+                    future.complete(value);
+                }
+            });
+        } catch (RuntimeException gone) {
+            future.completeExceptionally(gone); // completes on the storage thread, only in this case
+        }
     }
 
     /** Puts a database row into the cache unless a live join is fresher; returns the cached entry. */
