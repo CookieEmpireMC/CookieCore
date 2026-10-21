@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class PluginSettingsTest {
@@ -169,5 +170,13 @@ class PluginSettingsTest {
     void passwordNeverAppearsInDescribe() {
         PluginSettings s = from("database:\n  type: mariadb\n  password: s3cret\n");
         assertTrue(!s.database().describe().contains("s3cret"));
+    }
+
+    @Test
+    @Disabled("F-07: DatabaseSettings / PluginSettings are records, so toString() prints the database password; any future log of the settings would leak it")
+    void toStringNeverContainsThePassword() {
+        PluginSettings s = from("database:\n  type: mariadb\n  password: s3cret\n");
+        assertTrue(!s.toString().contains("s3cret"), s.toString());
+        assertTrue(!s.database().toString().contains("s3cret"), s.database().toString());
     }
 }

@@ -264,6 +264,17 @@ class ArchitectureRulesTest {
     }
 
     @Test
+    void noStringBasedScoreboardApi() throws IOException {
+        List<String> found = new ArrayList<>();
+        for (Line l : code()) {
+            if (l.text().contains("registerNewObjective(") && !l.text().contains("Criteria.")) {
+                found.add(l.where());
+            }
+        }
+        assertNone(found, "registerNewObjective with a String criteria is deprecated; use Criteria + Component");
+    }
+
+    @Test
     void luckPermsOnlyInItsOwnPackage() throws IOException {
         List<String> found = new ArrayList<>();
         for (Line l : code()) {
