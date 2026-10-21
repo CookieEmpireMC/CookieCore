@@ -145,7 +145,7 @@ class CommandTreeTest {
         TestSupport.Recorder rec = new TestSupport.Recorder();
         assertEquals(1, run(TestSupport.player(rec, Perm.ADMIN_RELOAD), "cookiecore reload"));
         assertEquals(1, reloads);
-        assertEquals("CookieCore » Configuration reloaded.", rec.lastPlain().replace("»", "»").strip().replaceAll("\\s+", " "));
+        assertEquals("CookieCore » Configuration reloaded.", rec.lastPlain().strip());
         assertEquals(1, rec.sounds.size());
         assertEquals("minecraft:block.note_block.pling", rec.sounds.getFirst().name().asString());
     }
