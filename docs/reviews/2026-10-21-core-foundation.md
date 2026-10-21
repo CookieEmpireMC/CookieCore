@@ -122,3 +122,43 @@ Reviewed at `cd76015` (feature/core-foundation after merging the coder): `Cookie
 ## 8. Hand-off
 - **plugin-coder (cleanup pass):** F-03, F-04, F-01 (the three that change behaviour or cost), then F-06, F-07, F-08, F-09, optionally F-05, F-10, F-11. The `@Disabled` tests are mine: after a fix, tell me; I remove the `@Disabled` and re-review only the diff.
 - **user:** F-02 (hooks for `ownership-check`), the in-game checks above, `mise.toml`/`.gitattributes` human review already listed in the brief.
+
+---
+
+## 9. Fix pass (re-review of `git diff 77294e7..0786282 -- src/main`)
+
+Reviewer: Gandalf · 2026-10-21 · branch `core-foundation/plugin-tester-2` (tests and docs only) · reviewed at `0786282` (feature/core-foundation after merging `core-foundation/plugin-coder-fixes`). `pom.xml`, `mise.toml` and `src/main/resources` are unchanged since the first review (checked with `git diff --stat`).
+
+**VERDICT: READY.** All reported findings are fixed or answered. `mise run check`: **230 tests, 0 failures, 0 errors, 1 skipped** (the skip is F-12 below, a new LOW finding; I ran it with the disable condition off and it fails as described). No PERF-HIGH.
+
+### Per finding
+| Finding | Result | Evidence |
+|---|---|---|
+| F-01 tab completion O(N) | FIXED | `byName` is a `ConcurrentSkipListMap`, `KnownPlayerArgument` calls `PlayerDirectory#namesStartingWith` (a `subMap` range scan). Re-measured (JIT-warm, 200 calls averaged, limit 200): 10,000 players 0.006 ms, 100,000 players 0.010 to 0.014 ms, 500,000 players 0.005 to 0.008 ms, empty and long prefix alike; before: 18 ms, 157 ms, 800 ms. The warm-up cost moved to the IO thread (skip-list inserts): 0.13 s for 10,000, 0.5 s for 100,000, 1.8 s for 500,000 rows, off the main thread. The existing `CommandTreeTest` suggestion tests (prefix, case, order, cap 200) still pass through the new path. |
+| F-03 lookup futures hang | FIXED (one residual, F-13) | `lookup` catches `RejectedExecutionException` from `io`, catches `RuntimeException` around the store call, and `completeOnMain` fails the future if `main.execute` throws. `CookieCore.runOnMainThread` throws `RejectedExecutionException` when disabled. Tests: main executor rejects, scheduler `IllegalStateException`, unchecked store failure, io shut down, hand-off through the main executor. |
+| F-04 RuntimeException from the store | FIXED | `start()` catches `StorageException \| RuntimeException`, sets `storageUp=false`, logs SEVERE. `loadAll` skips and counts rows with an invalid uuid, one WARNING line (`Skipped N row(s) in <prefix>players with an invalid uuid`); `findByName` wraps it in a `StorageException`. Tests: one and several (empty string, `x1`, `12345`) corrupt rows, clean table logs nothing, the connection stays usable after a failed lookup, the 2-arg constructor. |
+| F-05 `last_seen` at shutdown | FIX CORRECT, event order UNVERIFIED | `Bukkit.getOnlinePlayers().forEach(directory::seen)` runs on the main thread inside `safely(...)`, before `directory.shutdown()` queues the close, so the writes land ahead of the close whichever order Paper uses (a later upsert from a late quit event is idempotent, and `seen` swallows `RejectedExecutionException` if the io executor is already shut down). I cannot verify without a server whether Paper 26.3 fires quit events before or after `onDisable`; the in-game check (section 6, step 4) stays. |
+| F-06 reload returns success | FIXED | returns `0` when problems were reported; `CommandTreeTest.reloadWithProblemsListsEachAndPlaysTheErrorSound` now asserts 0. |
+| F-07 password in `toString` | FIXED | `DatabaseSettings#toString` prints `password=***` (nothing when empty); the `PluginSettings` record `toString` embeds it. Tests: `toStringNeverContainsThePassword` (enabled) and the empty-password case. |
+| F-08 `cached((UUID) null)` | FIXED | test enabled. |
+| F-09 non-numeric config | FIXED, one gap (F-12) | `intOrDefault` reports `config.yml: database.port 'abc' is not a number; using 3306` once, no double report with the range check. Tests: port `abc`, `'3306x'`, `true`, `''`, `[1, 2]`; timeout `ten`, `'10 s'`, `false`, `1.5.2`; message text; numbers and missing keys stay silent. |
+
+### New findings
+- **F-12 LOW: a quoted whole number is still ignored silently.** `config/PluginSettings.java` `intOrDefault` / `isWholeNumber`. For `port: '3308'` (a YAML string) `raw` is a `String`, `isWholeNumber` is true so no problem is reported, but `ConfigurationSection#getInt(path, def)` only accepts a `Number` and returns the default 3306. The value the admin wrote is ignored with no message: the F-09 symptom for a quoted number. Fix: `if (raw instanceof Number n) return n.intValue();` then `try { return Integer.parseInt(String.valueOf(raw).trim()); } catch (NumberFormatException e) { report; return fallback; }` (drops `isWholeNumber` and the second `getInt`). Test: `PluginSettingsTest.aQuotedWholeNumberIsEitherUsedOrReportedNeverIgnoredSilently` (`@Disabled`, F-12; remove the annotation after the fix). Does not block: only a quoted number is affected and the default still applies.
+- **F-13 INFO: one lookup future can still stay incomplete across a disable.** If `runTask` accepted the task just before the plugin is disabled, the Bukkit scheduler cancels it with the plugin and that future never completes. Only a command waiting on it is affected, at shutdown or a plugin reload; nothing blocks on it (no `join()` in production code). If it ever matters, `PlayerDirectory` could keep the in-flight futures in a set and fail them in `shutdown()`.
+- **F-14 INFO: `cachedPlayers()` has no production caller any more** (only tests and the class Javadoc). Drop it or keep it deliberately as the read-only view; my tests use it, so tell me before removing.
+
+### Correctness and thread-safety of the changed code
+- `namesStartingWith`: keys are lower-cased with `Locale.ROOT`, the prefix comes from Brigadier's `getRemainingLowerCase()` (also `Locale.ROOT`), range `[prefix, prefix + '￿']`, `limit` applied lazily, names returned as last spelled, alphabetical. Sorted by the lower-case key, which equals the old case-insensitive sort for ASCII names. A rename briefly leaves a player under neither key (`remove` then `put` inside `synchronized remember`), visible only to a suggestion call racing a rename. A negative `limit` would throw (`Stream.limit`); the only caller passes 200. Test with 4 writer threads renaming while a reader scans: sorted, never more than 200, no exception.
+- `completeOnMain` completes the future on the IO thread only when the main executor refuses; documented in the code.
+- `JdbcPlayerStore` catch order is correct (`IllegalArgumentException` is unrelated to `SQLException`; no `invalidate()` for a data problem, so the connection is reused; a test proves it).
+- No new threads, static state, Bukkit calls from the IO thread, or main-thread blocking. `CookieCore.java` stays under its 200-line rule. `ArchitectureRulesTest` is green on the new code.
+
+### Performance (fix pass)
+Staff tab completion is now O(log N + 200): single-digit microseconds up to 500,000 known players. Join/quit unchanged (a skip-list `put`/`remove` instead of a hash `put`: negligible). The enable-time warm-up is slightly more expensive (1.8 s for 500,000 rows, on the IO thread) and does not delay enabling. No PERF findings remain.
+
+### Process note
+`mise run ownership-check` (F-02) still cannot run in this repo. By hand: the coder's fix commits (`3d1d974`, `764e743`, `928d2e8`, `903273a`, `5019d25`) touch `src/main/` and its own memory folder only, which is inside the plugin-coder globs.
+
+### Ledger
+Reviewed at `0786282`: `PlayerDirectory`, `KnownPlayerArgument`, `CookieCoreCommand`, `PluginSettings`, `DatabaseSettings`, `JdbcPlayerStore`, `CookieCore` (`runOnMainThread`, `onDisable`). Unchanged since `cd76015` and keeping their earlier verdict: `api/`, `text/`, `sound/`, `storage/` (except `JdbcPlayerStore`, `DatabaseSettings`), `config/ConfigLoader`, resources, `pom.xml`, `mise.toml`, CI. Later reviews: `git diff 0786282..HEAD -- src/main pom.xml mise.toml`.
