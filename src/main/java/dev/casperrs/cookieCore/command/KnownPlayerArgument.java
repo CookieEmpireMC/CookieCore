@@ -14,7 +14,6 @@ import io.papermc.paper.command.brigadier.MessageComponentSerializer;
 import io.papermc.paper.command.brigadier.argument.CustomArgumentType;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 
-import java.util.Locale;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
@@ -53,13 +52,7 @@ public final class KnownPlayerArgument implements CustomArgumentType.Converted<P
 
     @Override
     public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
-        String typed = builder.getRemainingLowerCase();
-        directory.cachedPlayers().stream()
-                .map(PlayerRef::name)
-                .filter(name -> name.toLowerCase(Locale.ROOT).startsWith(typed))
-                .sorted(String.CASE_INSENSITIVE_ORDER)
-                .limit(MAX_SUGGESTIONS)
-                .forEach(builder::suggest);
+        directory.namesStartingWith(builder.getRemainingLowerCase(), MAX_SUGGESTIONS).forEach(builder::suggest);
         return builder.buildFuture();
     }
 }

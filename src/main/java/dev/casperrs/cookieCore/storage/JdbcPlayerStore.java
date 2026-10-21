@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.logging.Logger;
 
 /**
  * JDBC {@link PlayerStore} for H2 and MariaDB (plain SQL that both accept). Holds one connection and reopens it when it
@@ -23,14 +24,20 @@ public final class JdbcPlayerStore implements PlayerStore {
 
     private final ConnectionFactory connections;
     private final String p;
+    private final Logger log;
     private Connection connection;
 
     public JdbcPlayerStore(ConnectionFactory connections, String tablePrefix) {
+        this(connections, tablePrefix, Logger.getLogger("CookieCore"));
+    }
+
+    public JdbcPlayerStore(ConnectionFactory connections, String tablePrefix, Logger log) {
         if (!tablePrefix.matches(DatabaseSettings.PREFIX_PATTERN)) {
             throw new IllegalArgumentException("bad table prefix '" + tablePrefix + "'");
         }
         this.connections = connections;
         this.p = tablePrefix;
+        this.log = log;
     }
 
     @Override
@@ -89,8 +96,16 @@ public final class JdbcPlayerStore implements PlayerStore {
             Connection c = connection();
             try (Statement st = c.createStatement();
                  ResultSet rs = st.executeQuery("SELECT uuid, name, first_seen, last_seen FROM " + p + "players ORDER BY last_seen ASC")) {
+                int skipped = 0;
                 while (rs.next()) {
-                    out.add(record(rs));
+                    try {
+                        out.add(record(rs));
+                    } catch (IllegalArgumentException corrupt) {
+                        skipped++; // a hand-edited or damaged row must not cost every other player
+                    }
+                }
+                if (skipped > 0) {
+                    log.warning("Skipped " + skipped + " row(s) in " + p + "players with an invalid uuid");
                 }
             }
         } catch (SQLException e) {
@@ -111,6 +126,8 @@ public final class JdbcPlayerStore implements PlayerStore {
                     return rs.next() ? Optional.of(record(rs)) : Optional.empty();
                 }
             }
+        } catch (IllegalArgumentException e) {
+            throw new StorageException("Player " + name + " has an invalid uuid in the database", e);
         } catch (SQLException e) {
             invalidate();
             throw new StorageException("Could not look up player " + name, e);

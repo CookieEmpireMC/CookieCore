@@ -20,6 +20,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.logging.Level;
 import java.util.random.RandomGenerator;
 
@@ -66,7 +67,7 @@ public final class CookieCore extends JavaPlugin {
         // 2. storage
         io = StorageThread.create("CookieCore-Storage");
         JdbcPlayerStore store = new JdbcPlayerStore(new DriverConnectionFactory(settings.database()),
-                settings.database().tablePrefix());
+                settings.database().tablePrefix(), getLogger());
         getLogger().info("Using " + settings.database().describe());
 
         // 3. player directory (migrates the schema, loads the known players; never blocks the main thread)
@@ -100,6 +101,8 @@ public final class CookieCore extends JavaPlugin {
         });
         safely("the player directory", () -> {
             if (directory != null) {
+                // players still online: Paper may fire their quit events only after plugins are disabled, so refresh last_seen now
+                Bukkit.getOnlinePlayers().forEach(p -> directory.seen(p.getUniqueId(), p.getName()));
                 directory.shutdown(); // queues closing the database behind the pending writes
             }
         });
@@ -128,9 +131,11 @@ public final class CookieCore extends JavaPlugin {
     }
 
     private void runOnMainThread(Runnable task) {
-        if (isEnabled()) {
-            Bukkit.getScheduler().runTask(this, task);
+        if (!isEnabled()) {
+            // never drop the task silently: the caller (PlayerDirectory.lookup) fails its future instead of hanging
+            throw new RejectedExecutionException("CookieCore is disabled");
         }
+        Bukkit.getScheduler().runTask(this, task);
     }
 
     private void safely(String what, Runnable step) {
