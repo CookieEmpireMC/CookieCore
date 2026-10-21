@@ -1,0 +1,4 @@
+- [Review ledger](reviews-ledger.md) — what was reviewed at which commit (CookieCore core-foundation: cd76015, READY, findings F-01..F-11)
+- [Test techniques for CookieCore](test-techniques.md) — server-free tests: Proxy senders, Brigadier dispatcher, ServiceLoader stand-in, mutation run of ArchitectureRulesTest
+- [Environment gotchas](env-gotchas.md) — mise.exe path on Windows, Bash tool heredoc/rm -rf hook quirks, worktree not pre-created
+- [sources.md](sources.md) — verified lookups (javap of paper-api jar etc.)
