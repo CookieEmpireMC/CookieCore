@@ -1,6 +1,6 @@
 # core-foundation
 
-**Status:** review (draft PR, unfinished)  <!-- planned | in progress | review | done -->
+**Status:** review (integration verdict READY; waits for the user's in-game check)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-20 · **Depends on:** none (phase 0 of [ROADMAP](ROADMAP.md))
 
 ## Goal
@@ -71,10 +71,22 @@ None blocking (defaults in [ROADMAP](ROADMAP.md) decisions D1 to D6).
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
 | resource-pack-researcher | done | feature branch | n/a | `docs/research/core-paper-apis.md` committed |
-| plugin-coder | stopped (WIP merged) | `core-foundation/plugin-coder` | not reviewed | skeleton compiles (`mvn verify` exit 0); stopped by the user mid-task |
-| plugin-tester | not started | | | |
+| plugin-coder | done (merged) | `core-foundation/plugin-coder`, `…-fixes` | READY | skeleton + fix pass F-01, F-03..F-09 |
+| plugin-tester | done (merged) | `core-foundation/plugin-tester`, `…-2` | READY | 230 tests, 1 skipped (F-12); 24 architecture rules |
 
-## Recap (2026-10-20, closed for the night)
+## Final state (2026-10-21)
+**Done:** every acceptance criterion except the in-game checks. `mise run check` is green (230 tests, 1 skipped on purpose). `ownership-check` was run by hand with a copy of CookieClicker's `ownership_lib.py` for every merged branch: clean. Reviews: `docs/reviews/2026-10-21-core-foundation.md` (first review and section 9 "Fix pass", verdict READY). Architecture: `docs/architecture.md`.
+
+**Follow-ups, none blocking:**
+- F-12 (LOW): a quoted number such as `database.port: '3308'` passes the number check but `getInt` falls back to 3306 without a problem. Fix in `PluginSettings.intOrDefault`, then remove `@Disabled` from `PluginSettingsTest.aQuotedWholeNumberIsEitherUsedOrReportedNeverIgnoredSilently`. Do it at the start of phase 1.
+- F-13 (INFO): a lookup future accepted by the scheduler just before disable never completes; F-14 (INFO): `PlayerDirectory.cachedPlayers()` has no production caller (tests use it); F-10/F-11 (INFO).
+
+**For the user (not doable by an agent):**
+1. F-02: copy `.claude/hooks/` (`ownership.py`, `ownership_lib.py`) from CookieClicker and register the hook in `.claude/settings.json`, so `mise run ownership-check` and the write-time hook work here.
+2. In-game checks on a Paper 26.3 server: clean boot, `/cookiecore version`, `/cookiecore reload`, `players` table filled after a join, tab completion of the custom arguments registers cleanly, F-05 (stop the server with a player online and read `last_seen`). Guide: section 6 of the review.
+3. PR: open it, or give the bot credentials (own GitHub App: `APP_ID`, `INSTALLATION_ID`, `KEY_PATH` in `~/.config/cookieclicker/github-app.env`).
+
+## Recap (2026-10-20, history: first session)
 **Done:** roadmap and brief; research note; coder skeleton: `pom.xml`, `plugin.yml`, `config.yml`, `messages.yml`, `sounds.yml` (vanilla keys), `Perm`, `Messages`, `SoundService` + parser, `PluginSettings`/`YamlFiles`, storage (H2/MariaDB factory, `StorageThread`, `SchemaMigrator`/`Migrations`, `JdbcPlayerStore`), `PlayerDirectory` + `PlayerListener`, `CookieCoreApi` (`api/`).
 
 **Still open (next session):**
