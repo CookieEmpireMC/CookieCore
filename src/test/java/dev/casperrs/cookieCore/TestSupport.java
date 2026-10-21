@@ -97,6 +97,20 @@ public final class TestSupport {
         return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type}, handler);
     }
 
+    /** A command source whose sender is {@code sender}. */
+    public static io.papermc.paper.command.brigadier.CommandSourceStack source(CommandSender sender) {
+        return (io.papermc.paper.command.brigadier.CommandSourceStack) Proxy.newProxyInstance(
+                TestSupport.class.getClassLoader(),
+                new Class<?>[] {io.papermc.paper.command.brigadier.CommandSourceStack.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getSender", "getExecutor" -> sender;
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "equals" -> proxy == args[0];
+                    case "toString" -> "CommandSourceStackProxy";
+                    default -> defaultValue(method.getReturnType());
+                });
+    }
+
     private static Object defaultValue(Class<?> type) {
         if (!type.isPrimitive() || type == void.class) {
             return null;
