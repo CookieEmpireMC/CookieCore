@@ -162,8 +162,8 @@ class CommandTreeTest {
         assertTrue(lines.get(2).contains("<red>oops</red> & <bold>"), "problem text is shown literally, never parsed: " + lines.get(2));
         assertEquals(1, rec.sounds.size());
         assertEquals("minecraft:block.note_block.bass", rec.sounds.getFirst().name().asString());
-        // documented behaviour (review F-06): the command still reports success to Brigadier
-        assertEquals(1, result);
+        // review F-06: Brigadier is told the reload had problems (0), so /execute store and command blocks can tell
+        assertEquals(0, result);
     }
 
     // --- CommandKit.checked --------------------------------------------------------------------------------------
