@@ -85,6 +85,13 @@
         "docs/balance/**",
         ".claude/agent-memory/bakery-team-balance-designer/**"
       ]
+    },
+    "repo-watcher": {
+      "name": "Gossip Gus",
+      "email": "gus@bakery.invalid",
+      "paths": [
+        ".claude/agent-memory/bakery-team-repo-watcher/**"
+      ]
     }
   },
   "human_controlled": [
