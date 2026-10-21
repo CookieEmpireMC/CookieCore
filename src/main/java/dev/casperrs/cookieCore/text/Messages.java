@@ -34,7 +34,9 @@ public final class Messages {
             "command.reloaded",
             "command.reload-failed",
             "command.reload-problem",
-            "command.version");
+            "command.version",
+            "command.storage-up",
+            "command.storage-down");
 
     private final Logger log;
     private final Set<String> warned = new HashSet<>();

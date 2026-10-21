@@ -12,4 +12,6 @@ command:
   reloaded: "<prefix><green>Configuration reloaded.</green>"
   reload-failed: "<prefix><red>Reload finished with <white><count></white> problem(s); the previous values were kept where needed:</red>"
   reload-problem: "<dark_gray> - </dark_gray><red><problem></red>"
-  version: "<prefix><gray>CookieCore <white><version></white> on <white><server></white> <dark_gray>(<database>)</dark_gray></gray>"
+  version: "<prefix><gray>CookieCore <white><version></white> on <white><server></white> <dark_gray>(database: <database>, <storage>)</dark_gray></gray>"
+  storage-up: "<green>connected</green>"
+  storage-down: "<red>memory only</red>"
