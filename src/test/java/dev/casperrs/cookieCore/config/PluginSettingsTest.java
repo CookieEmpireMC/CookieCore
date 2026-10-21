@@ -126,9 +126,55 @@ class PluginSettingsTest {
     }
 
     @Test
-    void nonNumericPortFallsBackToDefault() {
-        // YamlConfiguration#getInt hands back the default for a non-number, so no problem is reported (see review F-09)
-        assertEquals(3306, from("database:\n  port: abc\n").database().port());
+    void nonNumericPortIsReportedOnceAndFallsBackToDefault() {
+        for (String bad : new String[] {"abc", "'3306x'", "true", "''", "[1, 2]"}) {
+            problems.clear();
+            assertEquals(3306, from("database:\n  port: " + bad + "\n").database().port(), bad);
+            assertEquals(1, problems.size(), bad + " -> " + problems);
+            assertTrue(problems.getFirst().contains("database.port"), problems.getFirst());
+            assertTrue(problems.getFirst().contains("is not a number"), problems.getFirst());
+            assertTrue(problems.getFirst().contains("using 3306"), problems.getFirst());
+        }
+    }
+
+    @Test
+    void theNonNumericProblemNamesTheOffendingValue() {
+        from("database:\n  port: abc\n");
+        assertEquals(List.of("config.yml: database.port 'abc' is not a number; using 3306"), problems);
+    }
+
+    @Test
+    void nonNumericShutdownTimeoutIsReportedOnceAndFallsBackToTen() {
+        for (String bad : new String[] {"ten", "'10 s'", "false", "1.5.2"}) {
+            problems.clear();
+            assertEquals(10, from("database:\n  shutdown-timeout-seconds: " + bad + "\n").storageTimeoutSeconds(), bad);
+            assertEquals(1, problems.size(), bad + " -> " + problems);
+            assertTrue(problems.getFirst().contains("shutdown-timeout-seconds"), problems.getFirst());
+            assertTrue(problems.getFirst().contains("is not a number"), problems.getFirst());
+            assertTrue(problems.getFirst().contains("using 10"), problems.getFirst());
+        }
+    }
+
+    @Test
+    void numericValuesAndMissingKeysReportNothing() {
+        assertEquals(3307, from("database:\n  port: 3307\n").database().port());
+        assertEquals(3306, from("database:\n  type: h2\n").database().port(), "missing key uses the default silently");
+        assertEquals(30, from("database:\n  shutdown-timeout-seconds: 30\n").storageTimeoutSeconds());
+        assertTrue(problems.isEmpty(), problems.toString());
+    }
+
+    @Test
+    @Disabled("F-12: a quoted whole number ('3308') passes the new is-it-a-number check, but getInt then returns the default 3306 without any problem: the value is ignored silently")
+    void aQuotedWholeNumberIsEitherUsedOrReportedNeverIgnoredSilently() {
+        int port = from("database:\n  port: '3308'\n").database().port();
+        assertTrue(port == 3308 || !problems.isEmpty(), "port=" + port + " problems=" + problems);
+    }
+
+    @Test
+    void aNonNumericValueDoesNotAlsoTriggerTheRangeProblem() {
+        from("database:\n  port: abc\n  shutdown-timeout-seconds: ten\n");
+        assertEquals(2, problems.size(), problems.toString());
+        assertTrue(problems.stream().noneMatch(m -> m.contains("not a valid port") || m.contains("at least 1")), problems.toString());
     }
 
     @Test
@@ -173,10 +219,16 @@ class PluginSettingsTest {
     }
 
     @Test
-    @Disabled("F-07: DatabaseSettings / PluginSettings are records, so toString() prints the database password; any future log of the settings would leak it")
     void toStringNeverContainsThePassword() {
         PluginSettings s = from("database:\n  type: mariadb\n  password: s3cret\n");
         assertTrue(!s.toString().contains("s3cret"), s.toString());
         assertTrue(!s.database().toString().contains("s3cret"), s.database().toString());
+        assertTrue(s.database().toString().contains("password=***"), "a set password is shown as ***: " + s.database());
+        assertTrue(s.database().toString().contains("username="), "the other fields are still printed");
+    }
+
+    @Test
+    void toStringOfAnEmptyPasswordShowsNothingToHide() {
+        assertTrue(from("database:\n  type: mariadb\n").database().toString().contains("password=,"));
     }
 }

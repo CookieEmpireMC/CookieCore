@@ -2,6 +2,7 @@ package dev.casperrs.cookieCore.player;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -29,7 +30,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 class PlayerDirectoryTest {
@@ -42,6 +42,7 @@ class PlayerDirectoryTest {
         RuntimeException initRuntimeFailure;
         boolean failUpserts;
         boolean failFinds;
+        RuntimeException findRuntimeFailure;
         int findCalls;
         boolean closed;
 
@@ -76,6 +77,9 @@ class PlayerDirectoryTest {
         public synchronized Optional<PlayerRecord> findByName(String name) throws StorageException {
             calls.add("find:" + name);
             findCalls++;
+            if (findRuntimeFailure != null) {
+                throw findRuntimeFailure;
+            }
             if (failFinds) {
                 throw new StorageException("db down");
             }
@@ -178,7 +182,6 @@ class PlayerDirectoryTest {
     }
 
     @Test
-    @Disabled("F-04: a RuntimeException from the store (for example a corrupt uuid row in loadAll) escapes start(); on the real single-thread executor it is swallowed silently and storageUp stays false without a log line")
     void anUncheckedStoreFailureAlsoLeavesMemoryOnlyAndIsLogged() {
         store.initRuntimeFailure = new IllegalArgumentException("Invalid UUID string");
         PlayerDirectory d = directory(DIRECT, DIRECT);
@@ -212,7 +215,6 @@ class PlayerDirectoryTest {
     }
 
     @Test
-    @Disabled("F-08: cached((UUID) null) throws NullPointerException (ConcurrentHashMap.get(null)); cached((String) null) is null-safe")
     void cachedWithANullUuidIsEmpty() {
         assertTrue(started().cached((UUID) null).isEmpty());
     }
@@ -397,30 +399,55 @@ class PlayerDirectoryTest {
     }
 
     @Test
-    @Disabled("F-03: when the main executor drops the task (CookieCore.runOnMainThread after disable, or an IllegalPluginAccessException race) the lookup future never completes")
-    void lookupFutureStillCompletesWhenTheMainThreadIsGone() {
-        Executor dropping = task -> { };
-        PlayerDirectory d = directory(DIRECT, dropping);
-        d.start();
-        store.put(id(7), "Remote", 1, 5);
-        assertTrue(d.lookup("remote").isDone(), "a future that never completes leaks the waiting command");
-    }
-
-    @Test
-    @Disabled("F-03: an exception from the main executor (scheduler refuses a disabled plugin) escapes the io task and is swallowed; the future never completes")
-    void lookupFutureCompletesExceptionallyWhenTheMainExecutorRejects() {
+    void lookupFutureFailsWithTheMainExecutorsExceptionWhenItRejects() {
+        // CookieCore.runOnMainThread throws RejectedExecutionException once the plugin is disabled
+        RejectedExecutionException gone = new RejectedExecutionException("CookieCore is disabled");
         Executor rejecting = task -> {
-            throw new RejectedExecutionException("plugin disabled");
+            throw gone;
         };
         PlayerDirectory d = directory(DIRECT, rejecting);
         d.start();
         store.put(id(7), "Remote", 1, 5);
         CompletableFuture<Optional<PlayerRef>> f = d.lookup("remote");
-        assertTrue(f.isDone());
+        assertTrue(f.isCompletedExceptionally(), "a future that never completes leaks the waiting command");
+        assertSame(gone, assertThrows(CompletionException.class, f::join).getCause());
+        assertEquals("Remote", d.cached("remote").orElseThrow().name(), "the row is still cached for the next lookup");
     }
 
     @Test
-    @Disabled("F-03: lookup() after the io executor was shut down throws RejectedExecutionException to the caller instead of returning a failed future")
+    void lookupFutureAlsoFailsWhenTheSchedulerThrowsAnotherRuntimeException() {
+        // IllegalPluginAccessException (the race between isEnabled() and runTask) is an IllegalStateException
+        Executor scheduler = task -> {
+            throw new IllegalStateException("Plugin attempted to register task while disabled");
+        };
+        PlayerDirectory d = directory(DIRECT, scheduler);
+        d.start();
+        store.put(id(7), "Remote", 1, 5);
+        assertTrue(d.lookup("remote").isCompletedExceptionally());
+    }
+
+    @Test
+    void anUncheckedStoreFailureDuringLookupFailsTheFutureOnTheMainThread() {
+        PlayerDirectory d = started();
+        store.findRuntimeFailure = new IllegalArgumentException("Invalid UUID string: x");
+        CompletableFuture<Optional<PlayerRef>> f = d.lookup("someone");
+        assertTrue(f.isCompletedExceptionally());
+        assertSame(store.findRuntimeFailure, assertThrows(CompletionException.class, f::join).getCause());
+    }
+
+    @Test
+    void lookupResultsAreHandedToTheMainExecutorNotCompletedOnTheIoThread() {
+        QueueExecutor main = new QueueExecutor();
+        PlayerDirectory d = directory(DIRECT, main);
+        d.start();
+        store.put(id(7), "Remote", 1, 5);
+        CompletableFuture<Optional<PlayerRef>> f = d.lookup("remote");
+        assertFalse(f.isDone(), "completes only when the main thread runs its queue");
+        main.runAll();
+        assertEquals(id(7), f.join().orElseThrow().uuid());
+    }
+
+    @Test
     void lookupAfterIoShutdownReturnsAFailedFuture() {
         ExecutorService io = Executors.newSingleThreadExecutor();
         PlayerDirectory d = directory(io, DIRECT);
@@ -526,5 +553,107 @@ class PlayerDirectoryTest {
         PlayerDirectory d = started();
         d.seen(id(1), "Alice");
         assertEquals("Alice", d.lookup("alice").get().orElseThrow().name());
+    }
+
+    // --- namesStartingWith (tab completion, F-01) ----------------------------------------------------------------
+
+    private PlayerDirectory withNames(String... names) {
+        PlayerDirectory d = started();
+        for (int i = 0; i < names.length; i++) {
+            d.seen(id(i + 1), names[i]);
+        }
+        return d;
+    }
+
+    @Test
+    void namesStartingWithMatchesThePrefixCaseInsensitively() {
+        PlayerDirectory d = withNames("Notch", "NoodleBoy", "nova", "Alice", "Bob");
+        assertEquals(List.of("NoodleBoy", "Notch", "nova"), d.namesStartingWith("no", 10));
+        assertEquals(List.of("Notch"), d.namesStartingWith("notc", 10));
+        assertEquals(List.of("Alice"), d.namesStartingWith("alice", 10), "a full name matches itself");
+        assertEquals(List.of(), d.namesStartingWith("alicex", 10));
+        assertEquals(List.of(), d.namesStartingWith("zzz", 10));
+    }
+
+    @Test
+    void namesStartingWithAnEmptyPrefixListsEveryoneAlphabeticallyIgnoringCase() {
+        PlayerDirectory d = withNames("bob", "Alice", "Charlie", "alan", "Zed");
+        assertEquals(List.of("alan", "Alice", "bob", "Charlie", "Zed"), d.namesStartingWith("", 10));
+    }
+
+    @Test
+    void namesStartingWithKeepsTheStoredSpelling() {
+        assertEquals(List.of("NoTcH"), withNames("NoTcH").namesStartingWith("notch", 5));
+    }
+
+    @Test
+    void namesStartingWithHonoursTheLimitAndReturnsTheFirstInOrder() {
+        PlayerDirectory d = withNames("p5", "p3", "p1", "p4", "p2");
+        assertEquals(List.of("p1", "p2", "p3"), d.namesStartingWith("p", 3));
+        assertEquals(List.of(), d.namesStartingWith("p", 0));
+        assertEquals(5, d.namesStartingWith("p", 100).size());
+    }
+
+    @Test
+    void namesStartingWithFollowsRenamesAndTakeovers() {
+        PlayerDirectory d = withNames("OldName", "Other");
+        d.seen(id(1), "NewName");
+        assertEquals(List.of(), d.namesStartingWith("old", 5), "the old name is gone");
+        assertEquals(List.of("NewName"), d.namesStartingWith("new", 5));
+        d.seen(id(3), "Other"); // takes the name over from player 2
+        assertEquals(List.of("Other"), d.namesStartingWith("oth", 5));
+        assertEquals(id(3), d.cached("other").orElseThrow().uuid());
+    }
+
+    @Test
+    void namesStartingWithSeesPlayersLoadedByTheWarmUp() {
+        store.put(id(1), "Stored", 1, 10);
+        PlayerDirectory d = started();
+        assertEquals(List.of("Stored"), d.namesStartingWith("st", 5));
+    }
+
+    @Test
+    void namesStartingWithTreatsNonAsciiAndPatternCharactersLiterally() {
+        PlayerDirectory d = withNames("Zoe", "Émile", "_under", "a.b");
+        assertEquals(List.of("Émile"), d.namesStartingWith("é", 5));
+        assertEquals(List.of("_under"), d.namesStartingWith("_", 5));
+        assertEquals(List.of("a.b"), d.namesStartingWith("a.", 5));
+        assertEquals(List.of(), d.namesStartingWith(".*", 5), "no pattern matching");
+    }
+
+    @Test
+    void namesStartingWithOnAnEmptyDirectoryIsEmpty() {
+        assertEquals(List.of(), started().namesStartingWith("", 10));
+    }
+
+    @Test
+    void namesStartingWithIsSafeWhileJoinsAndRenamesRunConcurrently() throws Exception {
+        PlayerDirectory d = started();
+        ExecutorService pool = Executors.newFixedThreadPool(5);
+        try {
+            List<java.util.concurrent.Future<?>> fs = new ArrayList<>();
+            for (int w = 0; w < 4; w++) {
+                int worker = w;
+                fs.add(pool.submit(() -> {
+                    for (int i = 0; i < 2_000; i++) {
+                        d.seen(id(worker * 10_000 + i % 50), "P" + worker + "_" + (i % 7) + "x" + i % 50);
+                    }
+                }));
+            }
+            fs.add(pool.submit(() -> {
+                for (int i = 0; i < 2_000; i++) {
+                    List<String> names = d.namesStartingWith("p", 200);
+                    assertTrue(names.size() <= 200);
+                    for (int j = 1; j < names.size(); j++) {
+                        assertTrue(names.get(j - 1).compareToIgnoreCase(names.get(j)) <= 0, "sorted");
+                    }
+                }
+            }));
+            for (var f : fs) {
+                f.get(30, TimeUnit.SECONDS);
+            }
+        } finally {
+            pool.shutdownNow();
+        }
     }
 }
