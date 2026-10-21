@@ -1,0 +1,4 @@
+- [Review ledger](reviews-ledger.md) — core-foundation READY at cd76015 and again at 0786282 (fix pass); open F-12 LOW, F-13/F-14 INFO
+- [Test techniques for CookieCore](test-techniques.md) — server-free tests: Proxy senders, Brigadier dispatcher, ServiceLoader stand-in, mutation run of ArchitectureRulesTest
+- [Environment gotchas](env-gotchas.md) — mise.exe path on Windows, Bash tool heredoc/rm -rf hook quirks, worktree not pre-created
+- [sources.md](sources.md) — verified lookups (javap of paper-api jar etc.)

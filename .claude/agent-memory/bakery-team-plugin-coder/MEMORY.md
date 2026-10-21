@@ -1,0 +1,1 @@
+- [CookieCore build and ownership quirks](cookiecore-quirks.md) — mise path, git-in-worktree limits, src/test hook block, ownership-check needs hooks lib
