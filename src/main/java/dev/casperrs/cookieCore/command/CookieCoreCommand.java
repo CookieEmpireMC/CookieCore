@@ -1,6 +1,5 @@
 package dev.casperrs.cookieCore.command;
 
-import com.mojang.brigadier.Command;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.tree.LiteralCommandNode;
 import dev.casperrs.cookieCore.Perm;
@@ -79,6 +78,6 @@ public final class CookieCoreCommand {
             messages.send(sender, "command.reload-problem", Placeholder.unparsed("problem", problem));
         }
         sounds.play(sender, SoundEvents.UI_ERROR);
-        return Command.SINGLE_SUCCESS; // the reload itself ran; the problems are reported above
+        return 0; // the sender has been told; 0 lets /execute store and command blocks see that the reload had problems
     }
 }
