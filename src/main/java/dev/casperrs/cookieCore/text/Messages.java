@@ -36,7 +36,11 @@ public final class Messages {
             "command.reload-problem",
             "command.version",
             "command.storage-up",
-            "command.storage-down");
+            "command.storage-down",
+            "scoreboard.shown",
+            "scoreboard.hidden",
+            "scoreboard.disabled",
+            "scoreboard.players-only");
 
     private final Logger log;
     private final Set<String> warned = new HashSet<>();

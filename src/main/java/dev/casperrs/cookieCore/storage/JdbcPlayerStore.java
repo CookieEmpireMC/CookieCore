@@ -16,9 +16,10 @@ import java.util.logging.Logger;
  * JDBC {@link PlayerStore} for H2 and MariaDB (plain SQL that both accept). Holds one connection and reopens it when it
  * goes stale. Single-threaded by contract. The schema is versioned by {@link SchemaMigrator} with {@link Migrations}.
  *
- * <p>Table (prefix {@code core_} by default): {@code players(uuid, name, first_seen, last_seen)}.
+ * <p>Tables (prefix {@code core_} by default): {@code players(uuid, name, first_seen, last_seen)} and
+ * {@code sidebar_prefs(uuid, visible)}.
  */
-public final class JdbcPlayerStore implements PlayerStore {
+public final class JdbcPlayerStore implements PlayerStore, SidebarStore {
 
     static final int MAX_NAME_LENGTH = 32;
 
@@ -131,6 +132,45 @@ public final class JdbcPlayerStore implements PlayerStore {
         } catch (SQLException e) {
             invalidate();
             throw new StorageException("Could not look up player " + name, e);
+        }
+    }
+
+    @Override
+    public boolean loadVisible(UUID uuid) throws StorageException {
+        try {
+            Connection c = connection();
+            try (PreparedStatement st = c.prepareStatement("SELECT visible FROM " + p + "sidebar_prefs WHERE uuid = ?")) {
+                st.setString(1, uuid.toString());
+                try (ResultSet rs = st.executeQuery()) {
+                    return !rs.next() || rs.getBoolean(1);
+                }
+            }
+        } catch (SQLException e) {
+            invalidate();
+            throw new StorageException("Could not load the sidebar choice of " + uuid, e);
+        }
+    }
+
+    @Override
+    public void saveVisible(UUID uuid, boolean visible) throws StorageException {
+        String id = uuid.toString();
+        try {
+            Connection c = connection();
+            try (PreparedStatement up = c.prepareStatement("UPDATE " + p + "sidebar_prefs SET visible = ? WHERE uuid = ?")) {
+                up.setBoolean(1, visible);
+                up.setString(2, id);
+                if (up.executeUpdate() > 0) {
+                    return;
+                }
+            }
+            try (PreparedStatement ins = c.prepareStatement("INSERT INTO " + p + "sidebar_prefs (uuid, visible) VALUES (?, ?)")) {
+                ins.setString(1, id);
+                ins.setBoolean(2, visible);
+                ins.executeUpdate();
+            }
+        } catch (SQLException e) {
+            invalidate();
+            throw new StorageException("Could not save the sidebar choice of " + uuid, e);
         }
     }
 
