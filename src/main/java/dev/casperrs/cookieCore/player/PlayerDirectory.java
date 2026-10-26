@@ -49,10 +49,7 @@ public final class PlayerDirectory implements PlayerLookup {
     private final Set<UUID> live = new HashSet<>();
     private volatile boolean storageUp;
 
-    /**
-     * @param io   the single storage thread
-     * @param main runs a task on the server main thread (results of {@link #lookup})
-     */
+    /** {@code io} is the single storage thread; {@code main} runs a task on the server main thread (results of {@link #lookup}). */
     public PlayerDirectory(PlayerStore store, Executor io, Executor main, Logger log, LongSupplier clock) {
         this.store = store;
         this.io = io;

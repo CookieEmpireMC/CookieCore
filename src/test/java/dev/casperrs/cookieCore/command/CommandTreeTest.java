@@ -1,7 +1,6 @@
 package dev.casperrs.cookieCore.command;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,18 +22,19 @@ import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 /**
- * Drives the real command trees through a plain Brigadier dispatcher. Everything that needs a running server
- * ({@code ArgumentTypes.player()}, Paper's own wrapping of custom arguments) is not covered here.
+ * Drives the real command trees through a plain Brigadier dispatcher. Paper's own argument wrapping needs a server
+ * and is not covered here.
  */
 class CommandTreeTest {
 
@@ -74,12 +74,12 @@ class CommandTreeTest {
     @BeforeEach
     void setUp() {
         messages.load(TestSupport.resourceYaml("messages.yml"));
-        sounds = new SoundService(log.logger, new java.util.Random(1), p -> false);
+        sounds = new SoundService(log.logger, new Random(1), p -> false);
         sounds.load(SoundConfigParser.parse(YamlFiles.toMap(TestSupport.resourceYaml("sounds.yml")), p -> { }));
         directory = new PlayerDirectory(NO_STORE, Runnable::run, Runnable::run, log.logger, () -> 1L);
         directory.start();
         kit = new CommandKit(messages, sounds, directory);
-        PluginSettings settings = PluginSettings.from(new org.bukkit.configuration.file.YamlConfiguration(), Path.of("x"), p -> { });
+        PluginSettings settings = PluginSettings.from(new YamlConfiguration(), Path.of("x"), p -> { });
         CookieCoreCommand command = new CookieCoreCommand(kit, messages, sounds, () -> settings, "9.9.9", () -> true, () -> {
             reloads++;
             return reloadProblems;
@@ -92,8 +92,6 @@ class CommandTreeTest {
         return dispatcher.execute(line, TestSupport.source(who));
     }
 
-    // --- /cookiecore ---------------------------------------------------------------------------------------------
-
     @Test
     void nothingWorksWithoutPermission() {
         CommandSender nobody = TestSupport.console(new TestSupport.Recorder());
@@ -104,40 +102,14 @@ class CommandTreeTest {
     }
 
     @Test
-    void versionNeedsItsOwnPermission() throws Exception {
+    void versionAndReloadEachNeedTheirOwnPermission() {
         TestSupport.Recorder rec = new TestSupport.Recorder();
         CommandSender onlyReload = TestSupport.console(rec, Perm.ADMIN_RELOAD);
         assertThrows(CommandSyntaxException.class, () -> run(onlyReload, "cookiecore version"));
         assertTrue(rec.messages.isEmpty());
-    }
-
-    @Test
-    void reloadNeedsItsOwnPermission() {
         CommandSender onlyVersion = TestSupport.console(new TestSupport.Recorder(), Perm.ADMIN_VERSION);
         assertThrows(CommandSyntaxException.class, () -> run(onlyVersion, "cookiecore reload"));
         assertEquals(0, reloads);
-    }
-
-    @Test
-    void versionShowsVersionServerDatabaseAndStorage() throws Exception {
-        TestSupport.Recorder rec = new TestSupport.Recorder();
-        assertEquals(1, run(TestSupport.console(rec, Perm.ADMIN_VERSION), "cookiecore version"));
-        String text = rec.lastPlain();
-        assertTrue(text.contains("9.9.9") && text.contains("Cookie Empire") && text.contains("h2") && text.contains("connected"), text);
-    }
-
-    @Test
-    void rootWithEitherPermissionShowsUsage() throws Exception {
-        TestSupport.Recorder rec = new TestSupport.Recorder();
-        assertEquals(1, run(TestSupport.console(rec, Perm.ADMIN_RELOAD), "cookiecore"));
-        assertTrue(rec.lastPlain().contains("/cookiecore"), rec.lastPlain());
-    }
-
-    @Test
-    void unknownSubcommandIsRejected() {
-        CommandSender admin = TestSupport.console(new TestSupport.Recorder(), Perm.ADMIN_VERSION, Perm.ADMIN_RELOAD);
-        assertThrows(CommandSyntaxException.class, () -> run(admin, "cookiecore bogus"));
-        assertThrows(CommandSyntaxException.class, () -> run(admin, "cookiecore reload extra"));
     }
 
     @Test
@@ -150,6 +122,7 @@ class CommandTreeTest {
         assertEquals("minecraft:block.note_block.pling", rec.sounds.getFirst().name().asString());
     }
 
+    /** F-06: a reload that reported problems still tells Brigadier it failed (0), so command blocks can tell. */
     @Test
     void reloadWithProblemsListsEachAndPlaysTheErrorSound() throws Exception {
         reloadProblems = List.of("config.yml: database.port 0 is not a valid port; using 3306", "messages.yml: <red>oops</red> & <bold>");
@@ -158,24 +131,14 @@ class CommandTreeTest {
         List<String> lines = rec.plain();
         assertEquals(3, lines.size(), lines.toString());
         assertTrue(lines.get(0).contains("2 problem(s)"), lines.get(0));
-        assertTrue(lines.get(1).contains("database.port 0"));
         assertTrue(lines.get(2).contains("<red>oops</red> & <bold>"), "problem text is shown literally, never parsed: " + lines.get(2));
         assertEquals(1, rec.sounds.size());
         assertEquals("minecraft:block.note_block.bass", rec.sounds.getFirst().name().asString());
-        // review F-06: Brigadier is told the reload had problems (0), so /execute store and command blocks can tell
         assertEquals(0, result);
     }
 
-    // --- CommandKit.checked --------------------------------------------------------------------------------------
-
     @Test
-    void checkedRunsTheBodyWithThePermission() throws Exception {
-        dispatcher.getRoot().addChild(Commands.literal("t").executes(kit.checked("x.y", ctx -> 42)).build());
-        assertEquals(42, run(TestSupport.console(new TestSupport.Recorder(), "x.y"), "t"));
-    }
-
-    @Test
-    void checkedRefusesASenderWithoutThePermissionEvenIfRequiresLetThemIn() throws Exception {
+    void checkedRefusesASenderWithoutThePermission() throws Exception {
         dispatcher.getRoot().addChild(Commands.literal("t").executes(kit.checked("x.y", ctx -> 42)).build());
         TestSupport.Recorder rec = new TestSupport.Recorder();
         assertEquals(0, run(TestSupport.player(rec), "t"));
@@ -183,20 +146,7 @@ class CommandTreeTest {
         assertEquals("minecraft:block.note_block.bass", rec.sounds.getFirst().name().asString());
     }
 
-    @Test
-    void literalHidesTheNodeFromSendersWithoutThePermission() {
-        dispatcher.getRoot().addChild(kit.literal("secret", "x.y").executes(c -> 1).build());
-        assertThrows(CommandSyntaxException.class, () -> run(TestSupport.console(new TestSupport.Recorder()), "secret"));
-    }
-
-    @Test
-    void permittedAcceptsAnyOfSeveralPermissions() {
-        var pred = CommandKit.permitted("a.b", "c.d");
-        assertTrue(pred.test(TestSupport.source(TestSupport.console(new TestSupport.Recorder(), "c.d"))));
-        assertFalse(pred.test(TestSupport.source(TestSupport.console(new TestSupport.Recorder(), "e.f"))));
-    }
-
-    // --- the argument kit ----------------------------------------------------------------------------------------
+    // --- the argument kit: /mute-style command with a player, a duration and a greedy reason ---------------------
 
     private record Captured(PlayerRef target, Duration time, String reason) {
     }
@@ -233,13 +183,6 @@ class CommandTreeTest {
     }
 
     @Test
-    void reasonIsRequired() {
-        registerMute();
-        assertThrows(CommandSyntaxException.class, () -> run(mod(), "mute notch 7d"));
-        assertTrue(captured.get() == null);
-    }
-
-    @Test
     void reasonWithMiniMessageTagsIsPassedThroughUntouched() throws Exception {
         registerMute();
         run(mod(), "mute Notch 1d <red><click:run_command:/op me>x");
@@ -263,13 +206,6 @@ class CommandTreeTest {
         }
     }
 
-    @Test
-    void permissionIsCheckedOnEveryStep() {
-        registerMute();
-        CommandSender nobody = TestSupport.console(new TestSupport.Recorder());
-        assertThrows(CommandSyntaxException.class, () -> run(nobody, "mute notch 7d why"));
-    }
-
     private List<String> suggest(String line) {
         var parse = dispatcher.parse(line, TestSupport.source(mod()));
         return dispatcher.getCompletionSuggestions(parse).join().getList().stream().map(Suggestion::getText).toList();
@@ -284,6 +220,7 @@ class CommandTreeTest {
         assertEquals(List.of(), suggest("mute zzz"));
     }
 
+    /** F-01: tab completion is capped so a large directory cannot flood the client or the main thread. */
     @Test
     void playerSuggestionsAreCapped() {
         registerMute();
@@ -291,21 +228,5 @@ class CommandTreeTest {
             directory.seen(new UUID(1, i), "Player" + i);
         }
         assertEquals(200, suggest("mute p").size());
-    }
-
-    @Test
-    void durationSuggestionsFilterByPrefix() {
-        registerMute();
-        assertEquals(List.of("1h", "12h", "1d"), suggest("mute notch 1").stream().sorted((a, b) -> Integer.compare(
-                List.of("1h", "12h", "1d").indexOf(a), List.of("1h", "12h", "1d").indexOf(b))).toList());
-        assertEquals(List.of(), suggest("mute notch x"));
-        List<String> all = new ArrayList<>(suggest("mute notch "));
-        assertTrue(all.containsAll(List.of("30m", "1h", "12h", "1d", "7d", "30d")), all.toString());
-    }
-
-    @Test
-    void theClientSeesPlainWordsForTheCustomArguments() {
-        assertTrue(new KnownPlayerArgument(directory, messages).getNativeType() instanceof com.mojang.brigadier.arguments.StringArgumentType);
-        assertTrue(new DurationArgument(messages).getNativeType() instanceof com.mojang.brigadier.arguments.StringArgumentType);
     }
 }

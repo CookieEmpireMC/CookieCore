@@ -1,4 +1,6 @@
 # Verified lookups (URL | what it confirmed | date)
 - `C:\Users\Luuk\.m2\repository\io\papermc\paper\paper-api\26.3.build.205-stable\paper-api-26.3.build.205-stable.jar` + `mise exec -- javap -cp <jar> -c -p <class>` | `CustomArgumentType.Converted#parse` = `convert(getNativeType().parse(reader))`; `Commands.literal/argument` are plain Brigadier; `MessageComponentSerializer.message()` = ServiceLoader `findFirst().orElseThrow()` | 2026-10-21 (stable for 26.3.build.205)
+- Same jar, `javap -p io.papermc.paper.plugin.configuration.PluginMeta` | interface exposes `getLoadOrder`, `getPluginDependencies`, `getPluginSoftDependencies`, `getLoadBeforePlugins`, `getPermissions`, `getAPIVersion`; `loader` / `dependencies.server` key parsing is in the server jar, not here | 2026-10-26 (stable for 26.3.build.205)
+- Same jar: `io.papermc.paper.plugin.loader.PluginLoader`, `PluginClasspathBuilder`, `library.impl.MavenLibraryResolver` exist (used by `CookieCoreLoader`) | 2026-10-26
 - Cookie-Clicker `src/test/.../ArchitectureRulesTest.java` | style reference (source scan, `hits(needle, allowedPathPart)`); note its `"/sound/"` path test breaks on Windows separators, mine normalises | 2026-10-21
-Dead ends: none yet.
+Dead ends: `docs/paper-26x-reference.md` is not in CookieCore (only `docs/architecture.md`, `briefs`, `research`, `reviews`); the Paper descriptor key details are not in the API jar.

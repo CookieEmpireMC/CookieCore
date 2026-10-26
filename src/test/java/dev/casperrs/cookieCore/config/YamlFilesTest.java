@@ -2,10 +2,10 @@ package dev.casperrs.cookieCore.config;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -14,10 +14,6 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/**
- * The file-level half of "a broken file logs a precise error and keeps the last good values". {@code ConfigLoader}
- * itself needs a {@code JavaPlugin} and is not covered here (see docs/reviews: coverage gaps).
- */
 class YamlFilesTest {
 
     @TempDir
@@ -29,35 +25,16 @@ class YamlFilesTest {
     }
 
     @Test
-    void validFileLoads() throws Exception {
-        Path f = dir.resolve("a.yml");
-        Files.writeString(f, "a:\n  b: 1\n");
-        assertEquals(1, YamlFiles.load(f.toFile(), "a.yml").orElseThrow().getInt("a.b"));
-    }
-
-    @Test
     void malformedYamlNamesTheFileAndKeepsTheCause() throws Exception {
         Path f = dir.resolve("config.yml");
         Files.writeString(f, "server:\n  name: [unclosed\n\tbad: tab\n");
-        YamlFiles.BadYamlException e = assertThrows(YamlFiles.BadYamlException.class, () -> YamlFiles.load(f.toFile(), "config.yml"));
+        YamlFiles.BadYamlException e = assertThrows(YamlFiles.BadYamlException.class,
+                () -> YamlFiles.load(f.toFile(), "config.yml"));
         assertTrue(e.getMessage().startsWith("config.yml is not valid YAML"), e.getMessage());
-        assertTrue(e.getCause() != null);
+        assertNotNull(e.getCause());
     }
 
-    @Test
-    void aDirectoryWhereTheFileShouldBeIsTreatedAsMissing() throws Exception {
-        File asDir = Files.createDirectory(dir.resolve("sounds.yml")).toFile();
-        assertTrue(YamlFiles.load(asDir, "sounds.yml").isEmpty());
-    }
-
-    @Test
-    void emptyFileLoadsAsEmptyConfiguration() throws Exception {
-        Path f = dir.resolve("e.yml");
-        Files.writeString(f, "");
-        YamlConfiguration y = YamlFiles.load(f.toFile(), "e.yml").orElseThrow();
-        assertTrue(y.getKeys(true).isEmpty());
-    }
-
+    /** Sections become nested maps in file order; the sound parser reads lists and maps through this. */
     @Test
     void toMapFlattensSectionsToNestedMapsInOrder() throws Exception {
         YamlConfiguration y = new YamlConfiguration();

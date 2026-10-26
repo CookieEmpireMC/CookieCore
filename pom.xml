@@ -14,7 +14,7 @@
     <properties>
         <java.version>25</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <!-- JDBC drivers: Paper downloads these via plugin.yml `libraries:`; keep both lists in sync -->
+        <!-- JDBC drivers: CookieCoreLoader downloads them (filtered into cookiecore-libraries.properties) -->
         <h2.version>2.5.252</h2.version>
         <mariadb.version>3.5.10</mariadb.version>
     </properties>
@@ -40,19 +40,21 @@
             </plugin>
         </plugins>
         <resources>
-            <!-- Only plugin.yml needs ${version}; other configs hold MiniMessage/YAML that must not be filtered -->
+            <!-- Only these two need ${...}; other configs hold MiniMessage/YAML that must not be filtered -->
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>true</filtering>
                 <includes>
-                    <include>plugin.yml</include>
+                    <include>paper-plugin.yml</include>
+                    <include>cookiecore-libraries.properties</include>
                 </includes>
             </resource>
             <resource>
                 <directory>src/main/resources</directory>
                 <filtering>false</filtering>
                 <excludes>
-                    <exclude>plugin.yml</exclude>
+                    <exclude>paper-plugin.yml</exclude>
+                    <exclude>cookiecore-libraries.properties</exclude>
                 </excludes>
             </resource>
         </resources>
@@ -72,7 +74,7 @@
             <version>26.3.build.205-stable</version>
             <scope>provided</scope>
         </dependency>
-        <!-- provided: loaded at runtime by Paper from plugin.yml `libraries:` (not shaded) -->
+        <!-- provided: loaded at runtime by CookieCoreLoader (not shaded) -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
