@@ -20,7 +20,12 @@ public final class Migrations {
                                 + "uuid VARCHAR(36) NOT NULL PRIMARY KEY, "
                                 + "name VARCHAR(" + JdbcPlayerStore.MAX_NAME_LENGTH + ") NOT NULL, "
                                 + "first_seen BIGINT NOT NULL, "
-                                + "last_seen BIGINT NOT NULL)"));
+                                + "last_seen BIGINT NOT NULL)"),
+                // v1 -> v2 (core-scoreboard): each player's sidebar choice
+                List.of(
+                        "CREATE TABLE IF NOT EXISTS " + p + "sidebar_prefs ("
+                                + "uuid VARCHAR(36) NOT NULL PRIMARY KEY, "
+                                + "visible BOOLEAN NOT NULL)"));
     }
 
     /** The schema version this plugin version expects. */
