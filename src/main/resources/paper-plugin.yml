@@ -29,3 +29,39 @@ permissions:
     children:
       cookiecore.admin.version: true
       cookiecore.admin.reload: true
+  cookiecore.gamemode.survival:
+    description: Switch yourself to survival with /gamemode.
+    default: op
+  cookiecore.gamemode.creative:
+    description: Switch yourself to creative with /gamemode.
+    default: op
+  cookiecore.gamemode.adventure:
+    description: Switch yourself to adventure with /gamemode.
+    default: op
+  cookiecore.gamemode.spectator:
+    description: Switch yourself to spectator with /gamemode.
+    default: op
+  cookiecore.gamemode.others:
+    description: Change the game mode of other players (also needs the node of that mode).
+    default: op
+  cookiecore.gamemode.*:
+    description: Every CookieCore game mode permission.
+    default: op
+    children:
+      cookiecore.gamemode.survival: true
+      cookiecore.gamemode.creative: true
+      cookiecore.gamemode.adventure: true
+      cookiecore.gamemode.spectator: true
+      cookiecore.gamemode.others: true
+  cookiecore.fly:
+    description: Use /fly on yourself.
+    default: op
+  cookiecore.fly.others:
+    description: Use /fly on other players.
+    default: op
+  cookiecore.speed:
+    description: Use /speed on yourself.
+    default: op
+  cookiecore.speed.others:
+    description: Use /speed on other players.
+    default: op
