@@ -8,7 +8,7 @@ package dev.casperrs.cookieCore.api;
  * }</pre>
  * Declare {@code softdepend: [CookieCore]} and handle the missing service. Everything outside the
  * {@code dev.casperrs.cookieCore.api} package is internal and may change at any time. The API exposes no Brigadier,
- * LuckPerms or storage types.
+ * LuckPerms or storage types, only Bukkit, Adventure and {@code java.*} types.
  */
 public interface CookieCoreApi {
 
@@ -17,4 +17,7 @@ public interface CookieCoreApi {
 
     /** Players seen before, by name or id. */
     PlayerLookup players();
+
+    /** The sidebar placeholder registry. */
+    ScoreboardPlaceholders scoreboardPlaceholders();
 }

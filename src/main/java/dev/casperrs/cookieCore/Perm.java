@@ -11,9 +11,10 @@ public final class Perm {
 
     public static final String ADMIN_VERSION = "cookiecore.admin.version";
     public static final String ADMIN_RELOAD = "cookiecore.admin.reload";
+    public static final String SCOREBOARD_TOGGLE = "cookiecore.scoreboard.toggle";
 
     /** Every node above; used by tests to keep {@code paper-plugin.yml} in sync. */
-    public static final List<String> ALL = List.of(ADMIN_VERSION, ADMIN_RELOAD);
+    public static final List<String> ALL = List.of(ADMIN_VERSION, ADMIN_RELOAD, SCOREBOARD_TOGGLE);
 
     private Perm() {
     }

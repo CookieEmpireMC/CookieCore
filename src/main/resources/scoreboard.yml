@@ -1,0 +1,16 @@
+# CookieCore sidebar (MiniMessage: https://docs.advntr.dev/minimessage/format.html).
+# Apply changes with /cookiecore reload. Turn the sidebar off for everyone with scoreboard.enabled in config.yml.
+#
+# title: the heading. lines: 1 to 15 lines, top to bottom; "" is a blank spacer line.
+# Placeholders: <player> <server> <online> <max> <ping>, plus any a plugin registers (CookieClicker adds its own).
+# Values are inserted as plain text, never read as MiniMessage. Keep lines short: the sidebar is as wide as its widest line.
+
+title: "<gold><bold><server></bold></gold>"
+
+lines:
+  - ""
+  - "<gray>Player: <white><player></white></gray>"
+  - "<gray>Ping: <white><ping>ms</white></gray>"
+  - ""
+  - "<gray>Online: <white><online><dark_gray>/<gray><max>"
+  - ""
