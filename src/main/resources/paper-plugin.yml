@@ -1,19 +1,19 @@
 name: CookieCore
 version: '${version}'
-
 main: dev.casperrs.cookieCore.CookieCore
+# Downloads the JDBC drivers (cookiecore-libraries.properties) through Paper's Maven Central mirror
+loader: dev.casperrs.cookieCore.CookieCoreLoader
 api-version: '26.3'
 load: POSTWORLD
 description: Cookie Empire core - the server's base layer (tab, scoreboard, gamemode, moderation).
 
-# Optional: ranks and prefixes (a later phase). Core boots and works without it.
-softdepend: [LuckPerms]
-
-# JDBC drivers, downloaded by Paper from Maven Central (no shading needed).
-# Versions must match the h2.version / mariadb.version properties in pom.xml.
-libraries:
-  - com.h2database:h2:${h2.version}
-  - org.mariadb.jdbc:mariadb-java-client:${mariadb.version}
+dependencies:
+  server:
+    # Optional: ranks and prefixes. Core boots and works without it.
+    LuckPerms:
+      load: BEFORE
+      required: false
+      join-classpath: true
 
 # Keep in sync with dev.casperrs.cookieCore.Perm
 permissions:

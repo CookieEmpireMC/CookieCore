@@ -7,7 +7,7 @@ import java.util.Properties;
 
 /**
  * Opens connections through the driver class directly instead of {@link java.sql.DriverManager}:
- * the drivers come from plugin.yml {@code libraries:} on the plugin's class loader, which
+ * the drivers come from {@code CookieCoreLoader} on the plugin's class loader, which
  * DriverManager doesn't always see.
  */
 public final class DriverConnectionFactory implements ConnectionFactory {
@@ -26,7 +26,7 @@ public final class DriverConnectionFactory implements ConnectionFactory {
                 driver = (Driver) Class.forName(settings.driverClass(), true, DriverConnectionFactory.class.getClassLoader())
                         .getDeclaredConstructor().newInstance();
             } catch (ReflectiveOperationException | ClassCastException e) {
-                throw new SQLException("JDBC driver " + settings.driverClass() + " not found; is plugin.yml 'libraries:' loaded?", e);
+                throw new SQLException("JDBC driver " + settings.driverClass() + " not found; did CookieCoreLoader load it?", e);
             }
         }
         Properties props = new Properties();
