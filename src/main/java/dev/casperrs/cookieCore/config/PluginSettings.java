@@ -10,14 +10,14 @@ import java.util.function.Consumer;
  * Everything in {@code config.yml}. Reloadable except {@code database}, which needs a restart.
  * Wrong values are reported to {@code problems} and replaced by the default, so the plugin always gets a usable object.
  */
-public record PluginSettings(String serverName, DatabaseSettings database, int storageTimeoutSeconds) {
+public record PluginSettings(String serverName, DatabaseSettings database) {
 
     static final String DEFAULT_SERVER_NAME = "Cookie Empire";
     static final String DEFAULT_PREFIX = "core_";
 
     /** Same settings with another database block (reload keeps the running database until a restart). */
     public PluginSettings withDatabase(DatabaseSettings db) {
-        return new PluginSettings(serverName, db, storageTimeoutSeconds);
+        return new PluginSettings(serverName, db);
     }
 
     public static PluginSettings from(ConfigurationSection c, Path dataFolder, Consumer<String> problems) {
@@ -52,30 +52,23 @@ public record PluginSettings(String serverName, DatabaseSettings database, int s
                 c.getString("database.password", ""),
                 prefix);
 
-        int timeout = intOrDefault(c, "database.shutdown-timeout-seconds", 10, problems);
-        if (timeout < 1) {
-            problems.accept("config.yml: database.shutdown-timeout-seconds must be at least 1; using 10");
-            timeout = 10;
-        }
-        return new PluginSettings(serverName, db, timeout);
+        return new PluginSettings(serverName, db);
     }
 
-    /** {@code getInt} silently hands back the default for a non-number; this reports it. */
+    /** {@code getInt} ignores a quoted number such as {@code '3308'}; this accepts it and reports anything that is not a whole number. */
     private static int intOrDefault(ConfigurationSection c, String path, int fallback, Consumer<String> problems) {
         Object raw = c.get(path);
-        if (raw != null && !(raw instanceof Number) && !isWholeNumber(String.valueOf(raw))) {
-            problems.accept("config.yml: " + path + " '" + raw + "' is not a number; using " + fallback);
+        if (raw == null) {
             return fallback;
         }
-        return c.getInt(path, fallback);
-    }
-
-    private static boolean isWholeNumber(String text) {
+        if (raw instanceof Number n) {
+            return n.intValue();
+        }
         try {
-            Integer.parseInt(text.trim());
-            return true;
+            return Integer.parseInt(String.valueOf(raw).trim());
         } catch (NumberFormatException e) {
-            return false;
+            problems.accept("config.yml: " + path + " '" + raw + "' is not a number; using " + fallback);
+            return fallback;
         }
     }
 }

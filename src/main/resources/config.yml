@@ -11,8 +11,6 @@ database:
   type: h2
   # Prefix for every table (letters, digits, _). Lets Core share a MariaDB database with other plugins.
   table-prefix: core_
-  # On shutdown, wait at most this many seconds for pending writes to finish
-  shutdown-timeout-seconds: 10
   # --- h2 ---
   # Relative to plugins/CookieCore/ (H2 adds .mv.db)
   file: data/core

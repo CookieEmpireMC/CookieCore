@@ -43,6 +43,9 @@ import java.util.random.RandomGenerator;
  */
 public final class CookieCore extends JavaPlugin {
 
+    /** On shutdown, how long to wait for pending database writes before giving up. */
+    static final int SHUTDOWN_TIMEOUT_SECONDS = 10;
+
     private ConfigLoader loader;
     private PluginSettings settings;
     private Messages messages;
@@ -108,7 +111,7 @@ public final class CookieCore extends JavaPlugin {
         });
         safely("the storage thread", () -> {
             if (io != null) {
-                StorageThread.shutdown(io, settings != null ? settings.storageTimeoutSeconds() : 10, getLogger());
+                StorageThread.shutdown(io, SHUTDOWN_TIMEOUT_SECONDS, getLogger());
             }
         });
     }
