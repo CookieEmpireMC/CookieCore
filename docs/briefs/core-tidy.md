@@ -58,8 +58,8 @@ None.
 ## Status
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
-| plugin-coder | planned | `core-tidy/plugin-coder` | | |
-| plugin-tester | planned | `core-tidy/plugin-tester` | | |
+| plugin-coder | done (merged) | `core-tidy/plugin-coder` | n/a | ownership-check clean; src/main compiles, tests not run (mise blocked) |
+| plugin-tester | partial | `core-tidy/plugin-tester` | NOT READY | suite does not compile yet; open items in [afsluit.md](afsluit.md) |
 
 ## Merge order
 1. plugin-coder
