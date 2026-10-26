@@ -12,5 +12,5 @@ lines:
   - "<gray>Player: <white><player></white></gray>"
   - "<gray>Ping: <white><ping>ms</white></gray>"
   - ""
-  - "<gray>Online: <white><online><dark_gray>/<gray><max>"
+  - "<gray>Online: <white><online></white><dark_gray>/</dark_gray><gray><max></gray>"
   - ""
