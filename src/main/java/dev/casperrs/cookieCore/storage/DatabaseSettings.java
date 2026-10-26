@@ -6,10 +6,8 @@ import java.util.Optional;
 
 /**
  * The {@code database.*} section of {@code config.yml}. Changing it needs a server restart
- * (the connection is opened once at enable).
- *
- * @param h2File      H2 database file without extension, absolute
- * @param tablePrefix prefix for every table; letters, digits and underscores only
+ * (the connection is opened once at enable). {@code h2File} is the absolute H2 database file without extension;
+ * {@code tablePrefix} is put before every table name (letters, digits and underscores only).
  */
 public record DatabaseSettings(Type type, Path h2File, String host, int port, String database,
                                String username, String password, String tablePrefix) {
