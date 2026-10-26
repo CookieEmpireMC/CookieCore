@@ -5,6 +5,10 @@ import dev.casperrs.cookieCore.command.CommandKit;
 import dev.casperrs.cookieCore.command.CookieCoreCommand;
 import dev.casperrs.cookieCore.config.ConfigLoader;
 import dev.casperrs.cookieCore.config.PluginSettings;
+import dev.casperrs.cookieCore.gamemode.FlyCommand;
+import dev.casperrs.cookieCore.gamemode.FlyTracker;
+import dev.casperrs.cookieCore.gamemode.GameModeCommand;
+import dev.casperrs.cookieCore.gamemode.SpeedCommand;
 import dev.casperrs.cookieCore.player.PlayerDirectory;
 import dev.casperrs.cookieCore.player.PlayerListener;
 import dev.casperrs.cookieCore.sound.SoundService;
@@ -80,12 +84,23 @@ public final class CookieCore extends JavaPlugin {
         // 4. listeners
         getServer().getPluginManager().registerEvents(new PlayerListener(directory), this);
         Bukkit.getOnlinePlayers().forEach(p -> directory.seen(p.getUniqueId(), p.getName())); // after a /reload
+        FlyTracker flyTracker = new FlyTracker(this::runOnMainThread);
+        getServer().getPluginManager().registerEvents(flyTracker, this);
 
         // 5. commands
-        CookieCoreCommand command = new CookieCoreCommand(new CommandKit(messages, sounds, directory), messages, sounds,
+        CommandKit kit = new CommandKit(messages, sounds, directory);
+        CookieCoreCommand command = new CookieCoreCommand(kit, messages, sounds,
                 () -> settings, getPluginMeta().getVersion(), directory::storageAvailable, this::reload);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS,
                 event -> event.registrar().register(command.node(), "CookieCore admin commands"));
+        GameModeCommand gameMode = new GameModeCommand(kit, messages, sounds);
+        FlyCommand fly = new FlyCommand(kit, messages, sounds, flyTracker);
+        SpeedCommand speed = new SpeedCommand(kit, messages, sounds);
+        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
+            gameMode.register(event.registrar(), getLogger());
+            event.registrar().register(fly.node(), "Toggle flight");
+            event.registrar().register(speed.node(), "Change walking or flying speed");
+        });
 
         // 6. public API
         api = new CoreService(getPluginMeta().getVersion(), directory);
