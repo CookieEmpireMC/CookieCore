@@ -84,10 +84,13 @@ class MessagesTest {
                 Placeholder.unparsed("name", "n"), Placeholder.unparsed("input", "i"), Placeholder.unparsed("count", "2"),
                 Placeholder.unparsed("problem", "p"), Placeholder.unparsed("version", "1.0.0"),
                 Placeholder.unparsed("server", "s"), Placeholder.unparsed("database", "h2"),
-                Placeholder.component("storage", Component.text("ok")));
+                Placeholder.component("storage", Component.text("ok")),
+                Placeholder.unparsed("player", "Steve"), Placeholder.unparsed("staff", "Alex"),
+                Placeholder.unparsed("level", "5"), Placeholder.component("type", Component.text("walking")),
+                Placeholder.component("mode", Component.text("Creative")));
         strict.deserialize(jar.getString("prefix"));
-        for (String key : Messages.REQUIRED_KEYS) {
-            if (key.equals("prefix")) {
+        for (String key : jar.getKeys(true)) {
+            if (!jar.isString(key) || key.equals("prefix")) {
                 continue;
             }
             try {
@@ -99,9 +102,17 @@ class MessagesTest {
         }
     }
 
+    /** Keys built at runtime ("fly." + state, area + ".no-target"): the literal scan below cannot see them. */
+    private static final List<String> BUILT_AT_RUNTIME = List.of(
+            "fly.enabled-self", "fly.disabled-self", "fly.enabled-other", "fly.disabled-other", "fly.enabled-by", "fly.disabled-by",
+            "speed.set-self", "speed.set-other", "speed.set-by", "speed.reset-self", "speed.reset-other", "speed.reset-by",
+            "gamemode.console-needs-target", "gamemode.no-target", "gamemode.no-permission-others",
+            "fly.console-needs-target", "fly.no-target", "fly.no-permission-others",
+            "speed.console-needs-target", "speed.no-target", "speed.no-permission-others");
+
     @Test
     void everyMessageKeyUsedInCodeExistsInMessagesYml() throws IOException {
-        Pattern literal = Pattern.compile("\"(command\\.[a-z0-9.-]+)\"");
+        Pattern literal = Pattern.compile("\"((?:command|gamemode|fly|speed)\\.[a-z0-9][a-z0-9.-]*)\"");
         YamlConfiguration jar = TestSupport.resourceYaml("messages.yml");
         Set<String> used = new HashSet<>();
         try (Stream<Path> files = Files.walk(Path.of("src/main/java"))) {
@@ -115,7 +126,12 @@ class MessagesTest {
         assertFalse(used.isEmpty(), "found no message keys in code; the scan is broken");
         for (String key : used) {
             assertTrue(jar.isString(key), "code uses message key '" + key + "' but messages.yml has none");
-            assertTrue(Messages.REQUIRED_KEYS.contains(key), "'" + key + "' is used in code but not in Messages.REQUIRED_KEYS");
+            if (key.startsWith("command.")) {
+                assertTrue(Messages.REQUIRED_KEYS.contains(key), "'" + key + "' is used in code but not in Messages.REQUIRED_KEYS");
+            }
+        }
+        for (String key : BUILT_AT_RUNTIME) {
+            assertTrue(jar.isString(key), "code builds message key '" + key + "' but messages.yml has none");
         }
     }
 }

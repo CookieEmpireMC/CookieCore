@@ -101,6 +101,17 @@ class PluginDescriptorTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void gamemodeWildcardListsExactlyTheFourModesAndOthers() {
+        Map<String, Object> wildcard = (Map<String, Object>) permissions().get("cookiecore.gamemode.*");
+        assertNotNull(wildcard, "cookiecore.gamemode.* is declared");
+        Map<String, Object> children = (Map<String, Object>) wildcard.get("children");
+        assertEquals(Set.of(Perm.GAMEMODE_SURVIVAL, Perm.GAMEMODE_CREATIVE, Perm.GAMEMODE_ADVENTURE, Perm.GAMEMODE_SPECTATOR,
+                Perm.GAMEMODE_OTHERS), children.keySet());
+        assertTrue(children.values().stream().allMatch(Boolean.TRUE::equals), children.toString());
+    }
+
+    @Test
     void jdbcLibrariesAreTiedToThePomVersionsExactly() throws IOException {
         String pom = Files.readString(Path.of("pom.xml"));
         String h2 = property(pom, "h2.version");
