@@ -4,6 +4,13 @@ description: Per reviewed area, the commit verified and what passed; re-review o
 metadata:
   type: project
 ---
+## CookieCore `core-gamemode` (2026-10-27), VERDICT READY
+Review doc: `docs/reviews/2026-10-27-core-gamemode.md`. Coder branch merged at `5be0617`; verified at `5f453ed` (tester tests and deprecation fix) with the docs commit `8374d9a`.
+Areas: `gamemode/` (all 8 classes: GameModes, GameModeCommand, GameModeArgument, PlayerTargets, FlyCommand, FlyTracker, SpeedCommand, SpeedScale), `Perm.java`, `paper-plugin.yml` (gamemode/fly/speed nodes), `CookieCore.java` registration lines, `messages.yml` gamemode/fly/speed keys, `docs/architecture.md`.
+Tests: 137 before, 160 after (+23, 0 skipped); `mise run check` BUILD SUCCESS.
+Open LOW: L-1 `FlyTracker.java:33` `Player#isOnGround()` deprecated (use the `Entity` method), L-2 unknown mode/number errors no `ui_error`, L-3 `/gamemode` single player (`@a` refused, decision), L-4 `others` also needs the mode node (decision, stricter than brief), L-5 vanilla `/minecraft:gamemode` ungated by our nodes (by design), L-6 permission revocation only on next mode switch, L-7 `fly`/`speed` label takeover not logged, L-8 English command descriptions, L-9 kick → `PlayerQuitEvent` unverified (in-game step 15; MEDIUM if it fails), L-10 `/fly` off mid-air fall damage.
+Next re-review: `git diff 5f453ed..HEAD -- src/main` for the coder's L-1/L-7 fixes (tests run in full).
+
 ## CookieCore `core-tidy` (2026-10-26), VERDICT READY
 Review doc: `docs/reviews/2026-10-26-core-tidy.md`. Verified at `5873b9c` (tester trim) plus `1f380de`/`a467149` (docs). Coder branch merged at `d21a33a`.
 Areas: `paper-plugin.yml` (loader, `dependencies.server.LuckPerms`, permissions), `CookieCoreLoader` + `cookiecore-libraries.properties` (pom-filtered; jar checked), `PluginSettings.intOrDefault` (F-12), `CookieCore.SHUTDOWN_TIMEOUT_SECONDS`, `docs/architecture.md` Standards.

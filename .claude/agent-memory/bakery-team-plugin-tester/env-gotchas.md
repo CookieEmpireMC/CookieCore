@@ -13,3 +13,8 @@ Verified 2026-10-26 (replaces the 2026-10-21 notes where they changed).
 - Python string replace with `\n` inside a Python heredoc turns into real newlines: use the Edit tool for Java string literals containing `\n`.
 - `mise run ownership-check` fails in CookieCore (no `.claude/hooks/ownership_lib.py`). Manual run: copy CookieClicker's `.claude/hooks/ownership_lib.py` + CookieCore's `ownership.json` to a scratch dir and `CLAUDE_PROJECT_DIR=<dir> python tools/ownership/check.py <branch> --base <base>`.
 - Git on Windows warns "LF will be replaced by CRLF" on commit: harmless.
+- Verified 2026-10-27 (core-gamemode worktree):
+  - `git -C C:\\dev\\...` fails in Git Bash ("cannot change to 'C:devCookieCore'"). Use `cd /c/dev/CookieCore/...` and absolute `/c/...` paths. The Read tool needs `C:/dev/...` absolute paths.
+  - Worktree at `.claude/worktrees/core-gamemode-tester` (branch `core-gamemode/plugin-tester`): `mise run check` and `mise run test` both run there; `mise run test` is `mvn -B test`, `mise run check` is `mvn -B clean verify`. After a test-compile error, a stale `target/` is not the cause: check `tc.log` for the javac stack.
+  - mise path from Bash: `/c/Users/Luuk/AppData/Local/Microsoft/WinGet/Packages/jdx.mise_Microsoft.Winget.Source_8wekyb3d8bbwe/mise/bin/mise.exe`.
+  - The Fact-Forcing Gate denies any Bash command that contains `rm -rf`, even a no-op like `rm -rf $(echo)`. `mise run check` and `mise run test` were not gated in this run (they only write `target/`).
