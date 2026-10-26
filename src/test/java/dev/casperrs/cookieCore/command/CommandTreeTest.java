@@ -15,8 +15,6 @@ import dev.casperrs.cookieCore.config.YamlFiles;
 import dev.casperrs.cookieCore.player.PlayerDirectory;
 import dev.casperrs.cookieCore.sound.SoundConfigParser;
 import dev.casperrs.cookieCore.sound.SoundService;
-import dev.casperrs.cookieCore.storage.PlayerRecord;
-import dev.casperrs.cookieCore.storage.PlayerStore;
 import dev.casperrs.cookieCore.text.Messages;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
@@ -38,30 +36,6 @@ import org.junit.jupiter.api.Test;
  */
 class CommandTreeTest {
 
-    private static final PlayerStore NO_STORE = new PlayerStore() {
-        @Override
-        public void init() {
-        }
-
-        @Override
-        public void upsertSeen(UUID uuid, String name, long now) {
-        }
-
-        @Override
-        public List<PlayerRecord> loadAll() {
-            return List.of();
-        }
-
-        @Override
-        public Optional<PlayerRecord> findByName(String name) {
-            return Optional.empty();
-        }
-
-        @Override
-        public void close() {
-        }
-    };
-
     private final TestSupport.LogCapture log = new TestSupport.LogCapture();
     private final Messages messages = new Messages(log.logger);
     private SoundService sounds;
@@ -76,7 +50,7 @@ class CommandTreeTest {
         messages.load(TestSupport.resourceYaml("messages.yml"));
         sounds = new SoundService(log.logger, new Random(1), p -> false);
         sounds.load(SoundConfigParser.parse(YamlFiles.toMap(TestSupport.resourceYaml("sounds.yml")), p -> { }));
-        directory = new PlayerDirectory(NO_STORE, Runnable::run, Runnable::run, log.logger, () -> 1L);
+        directory = new PlayerDirectory(TestSupport.noStore(), Runnable::run, Runnable::run, log.logger, () -> 1L);
         directory.start();
         kit = new CommandKit(messages, sounds, directory);
         PluginSettings settings = PluginSettings.from(new YamlConfiguration(), Path.of("x"), p -> { });
