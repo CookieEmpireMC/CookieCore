@@ -1,6 +1,6 @@
 # core-tidy
 
-**Status:** in progress  <!-- planned | in progress | review | done -->
+**Status:** review (integration verdict READY; waits for the first Paper start)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-26 · **Depends on:** `core-foundation` (merged into `main` as PR #4)
 
 ## Goal
@@ -59,7 +59,7 @@ None.
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
 | plugin-coder | done (merged) | `core-tidy/plugin-coder` | n/a | ownership-check clean; src/main compiles, tests not run (mise blocked) |
-| plugin-tester | partial | `core-tidy/plugin-tester` | NOT READY | suite does not compile yet; open items in [afsluit.md](afsluit.md) |
+| plugin-tester | done (merged) | `core-tidy/plugin-tester` | READY | 137 tests (was 230), 0 skipped; `docs/reviews/2026-10-26-core-tidy.md`; LOW follow-ups L-1 to L-5 |
 
 ## Merge order
 1. plugin-coder
