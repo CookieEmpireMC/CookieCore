@@ -52,7 +52,7 @@ final class FakePlayer {
     }
 
     private void changeMode(GameMode mode) {
-        modeChanges.accept(new PlayerGameModeChangeEvent(player, mode));
+        modeChanges.accept(new PlayerGameModeChangeEvent(player, mode, PlayerGameModeChangeEvent.Cause.PLUGIN, null));
         gameMode = mode;
         if (GameModes.flies(mode)) {
             allowFlight = true;
