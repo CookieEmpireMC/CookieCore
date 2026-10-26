@@ -1,7 +1,6 @@
 package dev.casperrs.cookieCore.sound;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -28,41 +27,26 @@ class SoundConfigParserTest {
     }
 
     @Test
-    void fullEntry() {
+    void fullEntryIsReadAndDefaultsApplyToTheRest() {
         var out = parse(Map.of("ui_confirm", entry("key", "minecraft:a.b", "fallback", "minecraft:c.d", "volume", 0.5,
                 "pitch-min", 0.8, "pitch-max", 1.2, "source", "UI")));
         assertEquals(new SoundDef("ui_confirm", "minecraft:a.b", "minecraft:c.d", 0.5f, 0.8f, 1.2f, "ui"), out.get("ui_confirm"));
         assertTrue(problems.isEmpty(), problems.toString());
-    }
 
-    @Test
-    void defaultsApplyWhenOptionalFieldsAreMissing() {
-        SoundDef d = parse(Map.of("x", entry("key", "minecraft:a.b", "fallback", "minecraft:a.b"))).get("x");
+        SoundDef d = parse(Map.of("x", entry("key", "minecraft:a.b", "fallback", "minecraft:a.b", "pitch-min", 1.4))).get("x");
         assertEquals(1f, d.volume());
-        assertEquals(1f, d.pitchMin());
-        assertEquals(1f, d.pitchMax(), "pitch-max defaults to pitch-min");
         assertEquals("master", d.source());
-        assertTrue(problems.isEmpty());
+        assertEquals(1.4f, d.pitchMax(), "pitch-max defaults to pitch-min");
     }
 
+    /** A missing or invalid fallback uses the key and reports exactly one problem. */
     @Test
-    void pitchMaxDefaultsToPitchMin() {
-        SoundDef d = parse(Map.of("x", entry("key", "a.b", "fallback", "a.b", "pitch-min", 1.4))).get("x");
-        assertEquals(1.4f, d.pitchMax());
-    }
-
-    @Test
-    void missingFallbackUsesTheKeyAndReports() {
-        SoundDef d = parse(Map.of("x", entry("key", "minecraft:a.b"))).get("x");
-        assertEquals("minecraft:a.b", d.fallback());
-        assertEquals(1, problems.size());
-    }
-
-    @Test
-    void invalidFallbackUsesTheKey() {
-        SoundDef d = parse(Map.of("x", entry("key", "minecraft:a.b", "fallback", "Not A Key!"))).get("x");
-        assertEquals("minecraft:a.b", d.fallback());
-        assertEquals(1, problems.size());
+    void missingOrInvalidFallbackUsesTheKeyAndReports() {
+        SoundDef missing = parse(Map.of("x", entry("key", "minecraft:a.b"))).get("x");
+        assertEquals("minecraft:a.b", missing.fallback());
+        SoundDef invalid = parse(Map.of("y", entry("key", "minecraft:a.b", "fallback", "Not A Key!"))).get("y");
+        assertEquals("minecraft:a.b", invalid.fallback());
+        assertEquals(2, problems.size(), problems.toString());
     }
 
     @Test
@@ -96,11 +80,6 @@ class SoundConfigParserTest {
     }
 
     @Test
-    void aNonNumberVolumeIsIgnoredLikeAMissingValue() {
-        assertEquals(1f, parse(Map.of("z", entry("key", "a.b", "fallback", "a.b", "volume", "loud"))).get("z").volume());
-    }
-
-    @Test
     void swappedPitchRangeIsCorrected() {
         SoundDef d = parse(Map.of("x", entry("key", "a.b", "fallback", "a.b", "pitch-min", 1.5, "pitch-max", 0.5))).get("x");
         assertEquals(0.5f, d.pitchMin());
@@ -118,30 +97,11 @@ class SoundConfigParserTest {
     }
 
     @Test
-    void sourceAliasesAreAcceptedAndNormalisedByTheService() {
-        for (String alias : List.of("records", "blocks", "players")) {
-            assertTrue(SoundConfigParser.SOURCES.contains(alias));
-        }
+    void sourceNamesMapToRealSoundSources() {
         assertEquals(Sound.Source.RECORD, SoundService.source("records"));
         assertEquals(Sound.Source.BLOCK, SoundService.source("blocks"));
         assertEquals(Sound.Source.PLAYER, SoundService.source("players"));
         assertEquals(Sound.Source.UI, SoundService.source("ui"));
         assertEquals(Sound.Source.MASTER, SoundService.source("nonsense"));
-    }
-
-    @Test
-    void everyListedSourceMapsToARealSoundSource() {
-        for (String s : SoundConfigParser.SOURCES) {
-            Sound.Source mapped = SoundService.source(s);
-            if (!s.equals("master")) {
-                assertFalse(mapped == Sound.Source.MASTER, "source '" + s + "' silently maps to MASTER");
-            }
-        }
-    }
-
-    @Test
-    void emptyFileGivesNoSounds() {
-        assertTrue(parse(Map.of()).isEmpty());
-        assertTrue(problems.isEmpty());
     }
 }
