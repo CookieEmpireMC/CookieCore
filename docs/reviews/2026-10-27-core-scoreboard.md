@@ -1,48 +1,51 @@
 # Review: core-scoreboard
 
-Reviewer: Gandalf (plugin-tester) · 2026-10-27 · coder branch `core-scoreboard/plugin-coder` merged into `feature/core-scoreboard` at `61fa3bb` (reviewed as is, `src/main` unchanged). Tester branch `core-scoreboard/plugin-tester`: tests and docs from `0624e44` to `34bd8d7`, plus the review and memory commits after it.
+Reviewer: Gandalf (plugin-tester) · 2026-10-27 · round 1 on the coder branch `core-scoreboard/plugin-coder` (reviewed at `61fa3bb`). Round 2 re-review of the coder's fix round (`1c85bb8`, merged as `965e853`, brought into the tester branch as `7a7ca6d`): `git diff 61fa3bb..7a7ca6d -- src/main`. Tester commits: `0624e44` to `34bd8d7` (round 1), `cd4e29a`, `78597c2` (review, memory), then the round 2 tests and review.
 
-**VERDICT: NOT READY** (back to plugin-coder for one MEDIUM). The sidebar code itself is sound: no HIGH or PERF-HIGH findings, and the suite is green. The one MEDIUM is that the reload rule "a broken `scoreboard.yml` keeps the last good sidebar" (an acceptance criterion, and a test the brief asks for) cannot be tested as the code stands. The fix is a small seam in `ScoreboardConfig`. Everything else is LOW and goes to the follow-up list.
+**VERDICT: READY** (to merge into `feature/core-scoreboard`). No HIGH, MEDIUM or PERF-HIGH findings remain. M-1 (the `scoreboard.yml` reload test seam) is resolved and tested; L-1 is resolved. One LOW is still open and parked: L-4, the shipped `scoreboard.yml` Online line leaves its outer `<gray>` open, so the strict MiniMessage test is `@Disabled` until a one-line coder fix. Everything else is a follow-up.
 
 ## 1. Target version
 - `pom.xml`: `paper-api 26.3.build.205-stable` (pinned, provided). `PluginDescriptorTest` passes: `api-version` and the pom pin match, nothing shaded.
 - Java 25 (`mise.toml`). No legacy `ChatColor` / `§`, no `plugin.yml`, no NMS.
-- APIs used exist in 26.3 (the code compiles against the pinned jar): `Score#customName(Component)`, `Objective#numberFormat(NumberFormat)`, `NumberFormat.blank()`, `Criteria.DUMMY`, `registerNewObjective(String, Criteria, Component)`, `Player#getPing()`. Not verified in game: whether `customName` renders with blank numbers (in-game check 1 below).
+- APIs used exist in 26.3 (the code compiles against the pinned jar): `Score#customName(Component)`, `Objective#numberFormat(NumberFormat)`, `NumberFormat.blank()`, `Criteria.DUMMY`, `registerNewObjective(String, Criteria, Component)`, `Player#getPing()`. Not verified in game: whether `customName` renders with blank numbers (in-game check 1).
 
 ## 2. Test results
-- Baseline on this branch before my changes: **137 run, 5 failures** (the five known: API rule, toggle default, three schema-version tests).
-- After: **`mise run check` BUILD SUCCESS, 156 run, 0 failures, 0 errors, 0 skipped** (21.7 s, `mvn -B clean verify` through mise). `mise run test` green at the same state.
-- Net: 137 to 156 (+19 new, the 5 fixed in place). New: `SidebarDiffTest` 4, `PlaceholderRegistryTest` 5, `TemplateTest` 3, `ScoreboardLayoutTest` 4, `JdbcPlayerStoreTest` +2 (sidebar choice round trip and v1 to v2 upgrade), `ArchitectureRulesTest` +1 (scoreboard calls only in `scoreboard/`).
-- Fixed: `apiPackageExposesOnlyJavaTypes` now allows exactly `Player`, `Plugin`, `Component` (Javadoc says so; architecture.md too); the toggle node defaults to `true` by contract (admin nodes stay op); the three schema tests use `Migrations.currentVersion()` (and `+1` for the newer-schema case). `MessagesTest` now also scans `scoreboard.*` keys.
+- Round 1 (coder `61fa3bb` + my tests, before the fix round): **156 run, 0 failures**. Before my changes on this branch: **137 run, 5 failures** (the five known: API rule, toggle default, three schema-version tests).
+- Round 2 (after the coder's fix round and my ScoreboardConfig tests): **`mise run check` BUILD SUCCESS, 160 run, 0 failures, 0 errors, 1 skipped** (the `@Disabled` strict test, see L-4). The skipped test was run once with `-Djunit.jupiter.conditions.deactivate=org.junit.*DisabledCondition`: it fails with `All tags must be explicitly closed while in strict mode ... open tags: gray`, as expected.
+- Net over the baseline: 137 to 160 run (+23 new, the 5 fixed in place, 1 skipped).
+- New in round 2: `ScoreboardConfigTest` 3 (+3); `ScoreboardLayoutTest` unchanged count (4 run, plus the one skipped strict test; the shipped-file test keeps the lenient "no tag left as text" check so it stays green).
 - Not runnable here: `validate-assets`, `sound-check`, `balance-check` (no such tasks in this repo). `ownership-check` cannot run in CookieCore (no `.claude/ownership.json` and hook library); checked by hand: this branch touches only `src/test/**`, `docs/architecture.md`, `docs/reviews/**` and this agent's memory folder.
 
-### What is covered now (new or changed in this round)
+### What is covered now
 | Class | Tests | Covers |
 |---|---|---|
+| `ScoreboardConfigTest` | 3 | (new, round 2) a broken file on reload (invalid layout, then invalid YAML) keeps the previous layout and names the exact problem; a broken file on first load falls back to the jar copy and names the problem; a missing file is reported, the jar copy is used, and with no jar copy there is no sidebar and it says so |
 | `SidebarDiffTest` | 4 | first apply writes count, title and every line; identical second apply sends 0; one changed line sends 1; a count change resizes and rewrites every line; a title alone is one write |
 | `PlaceholderRegistryTest` | 5 | key regex and built-ins rejected (nothing changes on rejection); duplicate rejected, naming the first owner; `unregisterAll` removes only the owner's keys and bumps the version once; throwing or null resolver renders empty and is logged once per key; a layout resolves only the keys it uses |
 | `TemplateTest` | 3 | filled-in text and MiniMessage serialisation equal a real parse of the same sentence; a player name with tags shows literally, with no click event; unknown keys stay literal, missing values render empty, component values go in as they are |
-| `ScoreboardLayoutTest` | 4 | shipped `scoreboard.yml` loads with no problems and leaves no tag as text; missing title reported; 0 and 16 lines refused with the 1-to-15 message; a bare YAML line becomes blank |
+| `ScoreboardLayoutTest` | 4 (+1 disabled) | shipped `scoreboard.yml` loads with no problems and leaves no tag as text; missing title reported; 0 and 16 lines refused with the 1-to-15 message; a bare YAML line becomes blank. Disabled: strict MiniMessage parse of the shipped file (see L-4) |
 | `JdbcPlayerStoreTest` | 13 | (+2) sidebar choice defaults to visible, a hidden choice survives a reopen, update does not add a row; a v1 database (with players) migrates to v2 and keeps every player |
 | `SchemaMigratorTest` | 4 | (fixed) current version and re-run keeps data |
 | `ArchitectureRulesTest` | 12 | (+1) scoreboard calls (`org.bukkit.scoreboard`, `setScoreboard(`, `getScore(`, `registerNewObjective(`, `getNewScoreboard(`) only in `scoreboard/`; (relaxed) `api/` imports |
 | `MessagesTest` | 6 | (extended) the key scan covers `scoreboard.*` |
 
 ### Not covered, and why
-- `ScoreboardConfig` keep-last-good (needs `JavaPlugin`): see M-1.
-- `SidebarService`, `Sidebar`, `SidebarPreferences` hand-off, the task lifecycle: they call Bukkit's scoreboard manager and the scheduler, so they need a server. Reviewed by reading (section 4); the in-game checks cover them.
+- `SidebarService`, `Sidebar`, `SidebarPreferences` hand-off, the task lifecycle: they call Bukkit's scoreboard manager and the scheduler, so they need a server. Reviewed by reading (section 3); the in-game checks cover them.
 - `/scoreboard` tree: its constructor needs `SidebarService`, which is final and package-private in `scoreboard/`. Not worth a seam for one literal and one permission (permission string is covered by `PluginDescriptorTest`).
 
 ## 3. Findings
 
-### MEDIUM (back to plugin-coder)
-**M-1. The keep-last-good rule for `scoreboard.yml` has no test seam.** `scoreboard/ScoreboardConfig.java:27-51`. `load` reads through `YamlFiles.load(plugin, FILE)` and `YamlFiles.jarCopy(plugin, FILE)`, which need a live `JavaPlugin` (the data folder, `getResource` and `saveResource` all come from the plugin instance). So the brief's required test ("a broken `scoreboard.yml` on reload keeps the last good values") cannot run, and the rule is verified by reading only. Suggested fix: keep the decision, but feed it the file and the jar copy as suppliers, for example `ScoreboardConfig(Supplier<Optional<YamlConfiguration>> file, Supplier<Optional<YamlConfiguration>> jarCopy)` with the `JavaPlugin` version as a factory in `ScoreboardModule`. Then the tester adds three tests: a broken file on reload keeps the previous layout and says so; a broken file on first load uses the jar copy and names the problem; a missing file is reported. Re-review: only the `ScoreboardConfig` diff and its tests.
+### Round 2: M-1 and L-1 resolved
+**M-1 (resolved). The keep-last-good rule has a test seam.** `scoreboard/ScoreboardConfig.java`: the constructor takes a `FileSource` (public nested interface, `read()` returns the file or empty, throws `YamlFiles.BadYamlException`) and a `Supplier<Optional<YamlConfiguration>>` for the jar copy. `ScoreboardModule` supplies the production versions (`YamlFiles.load(plugin, …)`, `YamlFiles.jarCopy(plugin, …)`). The decision logic is unchanged and now runs in `ScoreboardConfigTest` (3 tests, above). Re-reviewed: a broken read keeps the previous layout and adds `keeping the previous sidebar`; the first load with a broken file uses the jar copy and names the problem; a missing file is reported; no jar copy gives `no sidebar will be shown`. No behaviour change in production.
+
+**L-1 (resolved).** `scoreboard/SidebarService.java:176`: the refresh catch now calls `sidebar.close()` before returning the player to "left alone", so the frozen board goes back to the main scoreboard. Not unit-tested (needs Bukkit). Small caveat, accepted: `close()` runs inside the `removeIf` of the tick; if `setScoreboard` itself threw, the rest of that tick would be skipped. That is not realistic and not a new risk.
+
+### Round 2: L-4 partly fixed, one line open (LOW, follow-up)
+**L-4. The shipped `scoreboard.yml` still leaves a tag open.** `src/main/resources/scoreboard.yml:15` is now `"<gray>Online: <white><online></white><dark_gray>/</dark_gray><gray><max></gray>"`. The inner tags are closed, but the first `<gray>` is never closed: the final `</gray>` closes the inner one. The lenient parser renders it correctly, so nothing is wrong on screen, but the team's strict standard fails (verified above). Suggested one-line fix: `"<gray>Online: <white><online></white><dark_gray>/</dark_gray><max></gray>"` (the max value inherits the outer gray). When it lands, remove the `@Disabled` on `ScoreboardLayoutTest.theShippedScoreboardFileIsStrictMiniMessage`. Not a bug in play; it is a standards item, so no fix round.
 
 ### LOW (follow-ups, no fix round)
-- **L-1. A failed refresh leaves a frozen board.** `scoreboard/SidebarService.java:173-175`: the catch logs "hiding it for them" and marks the player as replaced, but never calls `sidebar.close()`, so the player keeps a board that no longer updates until they rejoin. Exceptions here are unlikely. Suggest calling `close()` in that catch (it checks ownership itself).
 - **L-2. A toggle during the first moments after join can invert the choice.** `scoreboard/SidebarPreferences.java:61-62`: `isVisible` returns `true` until the saved choice has loaded. A player who hid the sidebar and runs `/scoreboard toggle` within the load time gets "hidden" (they meant "shown"). Tiny window. Fix: a toggle before the answer is known waits for it, or reads the database.
 - **L-3. A registered key can shadow a MiniMessage tag.** `scoreboard/PlaceholderRegistry.java:44-46` only rejects built-ins. Verified: with a key `red` registered, `Template.compile("<red>x</red>", ["red"])` treats `<red>` as the placeholder. A plugin named key such as `red`, `green`, `bold` changes every admin line that uses that tag. Suggest: reject the standard tag names too (or document it on `ScoreboardPlaceholders`).
-- **L-4. The shipped `scoreboard.yml` leaves tags open on the Online line.** `src/main/resources/scoreboard.yml:15`: `<gray>Online: <white><online><dark_gray>/<gray><max>`. It renders correctly with the lenient parser the plugin uses, but fails the team's strict parse (the `MessagesTest` standard). Suggested line: `"<gray>Online: <white><online></white><dark_gray>/</dark_gray><gray><max></gray>"`. After that, the shipped-file test can use a strict instance (I kept it lenient so this round stays green).
 - **L-5. Typos in `scoreboard.yml` are not reported at load.** `scoreboard/ScoreboardLayout.parse` checks the title and the line count only. The lenient parser accepts unknown tags and bad arguments without complaint (verified: `<unknowntag>`, `<rainbow:abc>`, `<click:run_command>` parse without error), so a typo in a tag name is silent. Also the brief says templates are parsed once at load; the code compiles them on first use after a load or a registry change (`SidebarService.layout()`). Both fine for correctness; suggest a strict parse at load that reports the first bad line.
 - **L-6. Dead code.** `log/WarnOnce.java:23` `clear()` has no callers. Remove it, or call it on reload if warnings should repeat after one.
 - **L-7. Javadoc nits.** `api/ScoreboardPlaceholders.java:23` uses `@throws` (not banned, but the standard keeps Javadoc to one or two lines without tags). `scoreboard/ScoreboardModule.java:50-51` wraps its Javadoc awkwardly.
@@ -54,20 +57,19 @@ Reviewer: Gandalf (plugin-tester) · 2026-10-27 · coder branch `core-scoreboard
 - **Main thread.** Every Bukkit scoreboard call is on the main thread: `show` runs in the join callback (main executor, `runOnMainThread`), `tick` in the repeating main task, `toggle` in the command, `reconfigure` on enable and reload, `shutdown` on disable. The IO thread only calls `SidebarStore` (`SidebarPreferences.java:42-45, 68-70`); `visible` is touched only on the main thread.
 - **Task lifecycle.** One task (`CookieCore.repeatOnMainThread`, `PERIOD_TICKS` 20), started by the first viewer (`SidebarService.java:123-125`), cancelled by `stopTaskIfIdle` when the viewer map empties: quit, hide, `hideAll` (disable, reload with `scoreboard.enabled: false`, null layout). `reconfigure` with `enabled` true joins everybody online. Nothing runs when disabled, and `shutdown` cancels it before the rest of disable.
 - **Leaks.** `viewers`, `replacedByOthers` and `visible` are cleared on quit (`SidebarService.java:79-83`, `SidebarPreferences.forget`). A load that finishes after the player left forgets the entry again (`SidebarService.java:69-70`). A disabled placeholder owner's keys are removed (`SidebarListener.onPluginDisable`). Only the viewer's own `Scoreboard` is held strongly, and it is dropped on quit.
-- **`setScoreboard` on quit.** Not called. `Sidebar.close()` runs only on hide and disable, and only if we still own the board (`ownsBoard()`).
+- **`setScoreboard` on quit.** Not called. `Sidebar.close()` runs only on hide, disable and a failed refresh, and only if we still own the board (`ownsBoard()`).
 - **Flicker.** No per-tick reset: `resetScore` runs only when the line count shrinks (`BoardSink.java:38-40`). The title is written only when it changes, and a line only when its text changes (`SidebarDiff`).
 - **Thread safety.** `PlaceholderRegistry` uses a `ConcurrentHashMap` and an `AtomicInteger`, so a registration from another plugin's thread cannot corrupt it (the documented contract is the main thread). `WarnOnce` uses `ConcurrentHashMap.newKeySet()`.
 - **MiniMessage.** Values go into `Template.render` as `Component.text` (`Template.java:60`) or as the component a resolver returned; nothing from a player or a value is parsed. `Placeholder.parsed` is still only in `text/Messages`. The test `playerInputIsNeverReadAsMiniMessage` passes.
 - **Messages and sounds.** `scoreboard.shown`, `.hidden`, `.disabled`, `.players-only` are in `Messages.REQUIRED_KEYS`, in `messages.yml`, and every key used in code parses strictly. Sounds go through `CommandKit.done` (`ui_confirm`) and `SoundService` (`ui_notify`); no direct `playSound`.
 - **Storage v2.** `sidebar_prefs` uses the table prefix, `CREATE TABLE IF NOT EXISTS`, plain `BOOLEAN` (H2 and MariaDB), and runs on the one IO thread, so the UPDATE-then-INSERT in `saveVisible` cannot race. Tested on H2.
 - **Descriptor.** `cookiecore.scoreboard.toggle` default `true` (`paper-plugin.yml`), matching `Perm`; `PluginDescriptorTest` passes.
-- **Config.** `scoreboard.enabled` reads through `PluginSettings`, a bad value is reported and defaults to `true`; `config` imports no scoreboard class.
-- **Standards.** No `@param` or `@return`, no wildcard imports, largest scoreboard class `SidebarService` at 199 lines, no method near 60 lines. Package direction matches `docs/architecture.md`.
+- **Config.** `scoreboard.enabled` reads through `PluginSettings`, a bad value is reported and defaults to `true`; `config` imports no scoreboard class. `ScoreboardConfig` imports `config.YamlFiles` only (one direction).
+- **Standards.** No `@param` or `@return`, no wildcard imports, largest scoreboard class `SidebarService` at about 200 lines, no method near 60 lines. Package direction matches `docs/architecture.md`.
 
 ## 4. Architecture
-- The split is clean: `Sidebar` (one player), `SidebarDiff` (what changed, behind `SidebarSink`), `BoardSink` (the only Bukkit writer), `SidebarService` (who sees it, the task). Swapping to the Team fallback only needs `BoardSink` (documented in `architecture.md`).
+- The split is clean: `Sidebar` (one player), `SidebarDiff` (what changed, behind `SidebarSink`), `BoardSink` (the only Bukkit writer), `SidebarService` (who sees it, the task), `ScoreboardConfig` (file decision, now fed by suppliers). Swapping to the Team fallback only needs `BoardSink` (documented in `architecture.md`).
 - `scoreboard` depends on `config`, `storage` (through the `SidebarStore` interface), `text`, `log` and `api`; `command` depends on `scoreboard`; nothing depends back. No cycles (`ArchitectureRulesTest`).
-- The seam problem is M-1 (`ScoreboardConfig` tied to `JavaPlugin`).
 - The replaced-board rule is as documented: one takeover per join at most, the player is left alone until rejoin (`SidebarService.refresh`, `replacedByOthers`).
 
 ## 5. Performance
@@ -87,10 +89,10 @@ Build the jar, start a Paper 26.3 test server, and run with a few players (or bo
 10. **Sounds.** Listen to `ui_confirm` (shown) and `ui_notify` (hidden) on toggle, as the brief asks.
 
 ## 7. Fixes per owner
-- **plugin-coder (round 1):** M-1 only. Optional, but recommended in the same round because it is small: L-1, L-4 (then the tester adds the strict check). Everything else is a follow-up.
-- **plugin-tester (after the fix):** the three `ScoreboardConfig` tests, and the strict check on `scoreboard.yml` if L-4 is done. Re-review `git diff 61fa3bb..HEAD -- src/main` (only the coder's fix).
+- **plugin-coder:** nothing blocks the merge. Optional follow-ups, in any later PR or small commit: L-4 (one line, then the tester removes the `@Disabled`), L-2, L-3, L-5, L-6, L-7, PERF-LOW-1.
+- **plugin-tester:** when L-4 lands, remove `@Disabled` on the strict shipped-file test and rerun `mise run check`.
 
 ## 8. Follow-up list (for the PR)
-L-1 to L-7, PERF-LOW-1, and the in-game items above.
+L-2 to L-7, L-4 (strict line, see above), PERF-LOW-1, and the in-game items in section 6.
 
-VERDICT: NOT READY
+VERDICT: READY
