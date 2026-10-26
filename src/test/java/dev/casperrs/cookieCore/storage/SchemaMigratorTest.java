@@ -16,9 +16,9 @@ class SchemaMigratorTest {
     @Test
     void freshDatabaseEndsAtTheCurrentVersionAndRunningAgainChangesNothing() throws Exception {
         try (Connection c = db.raw()) {
-            assertEquals(1, SchemaMigrator.migrate(c, "core_", Migrations.all("core_")), "core-foundation ships schema version 1");
+            assertEquals(Migrations.currentVersion(), SchemaMigrator.migrate(c, "core_", Migrations.all("core_")));
             db.execute("INSERT INTO core_players (uuid, name, first_seen, last_seen) VALUES ('u', 'n', 1, 2)");
-            assertEquals(1, SchemaMigrator.migrate(c, "core_", Migrations.all("core_")));
+            assertEquals(Migrations.currentVersion(), SchemaMigrator.migrate(c, "core_", Migrations.all("core_")));
             assertEquals(1, db.count("core_players"), "data kept");
             assertEquals(1, db.count("core_schema_version"), "still exactly one version row");
         }

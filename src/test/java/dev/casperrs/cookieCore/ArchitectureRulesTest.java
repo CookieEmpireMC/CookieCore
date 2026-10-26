@@ -109,6 +109,14 @@ class ArchitectureRulesTest {
         assertFalse(hits("playSound(", null).isEmpty(), "the sound service is the one place that plays");
     }
 
+    /** Scores, objectives and player scoreboards are touched only by scoreboard/, which owns the per-line update rules. */
+    @Test
+    void scoreboardCallsLiveOnlyInTheScoreboardPackage() throws IOException {
+        for (String needle : new String[] {"org.bukkit.scoreboard", "setScoreboard(", "getScore(", "registerNewObjective(", "getNewScoreboard("}) {
+            assertNone(hits(needle, "scoreboard"), needle + " outside scoreboard/");
+        }
+    }
+
     @Test
     void storageIsALeafWithNoBukkitAndJdbcStaysInside() throws IOException {
         List<String> found = new ArrayList<>();
@@ -217,16 +225,25 @@ class ArchitectureRulesTest {
         assertNone(scoreboard, "string scoreboard criteria or stray LuckPerms import");
     }
 
+    /**
+     * api/ may use java.*, itself, and the three Paper/Adventure types that the public contract names: Player and Plugin
+     * (the owner and the resolver argument of ScoreboardPlaceholders) and Adventure's Component (what a resolver returns).
+     * Everything else (Brigadier, LuckPerms, storage, other Bukkit or Paper types) stays out.
+     */
+    private static final List<String> API_EXTERNAL_IMPORTS = List.of(
+            "import org.bukkit.entity.Player;", "import org.bukkit.plugin.Plugin;", "import net.kyori.adventure.text.Component;");
+
     @Test
-    void apiPackageExposesOnlyJavaTypes() throws IOException {
+    void apiPackageExposesOnlyJavaTypesAndTheContractedPaperTypes() throws IOException {
         List<String> found = new ArrayList<>();
         for (Line l : code()) {
             if (l.pkg().equals("api") && l.text().startsWith("import ")
-                    && !l.text().startsWith("import java.") && !l.text().startsWith("import " + BASE + ".api.")) {
+                    && !l.text().startsWith("import java.") && !l.text().startsWith("import " + BASE + ".api.")
+                    && !API_EXTERNAL_IMPORTS.contains(l.text())) {
                 found.add(l.where());
             }
         }
-        assertNone(found, "api/ may only use java.* and itself (no Bukkit, Brigadier, LuckPerms or storage types)");
+        assertNone(found, "api/ may only use java.*, itself, Player, Plugin and Component (no Brigadier, LuckPerms or storage types)");
     }
 
     @Test

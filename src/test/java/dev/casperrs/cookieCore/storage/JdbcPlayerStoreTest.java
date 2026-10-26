@@ -24,8 +24,9 @@ class JdbcPlayerStoreTest {
     @Test
     void freshDatabaseIsMigratedAndASecondInitKeepsTheData() throws Exception {
         store.init();
-        assertEquals(1, store.schemaVersion());
+        assertEquals(Migrations.currentVersion(), store.schemaVersion());
         assertTrue(db.tableExists("core_players"));
+        assertTrue(db.tableExists("core_sidebar_prefs"));
         store.upsertSeen(a, "Alice", 100);
         store.init();
         assertEquals(1, store.loadAll().size());
@@ -34,7 +35,7 @@ class JdbcPlayerStoreTest {
     @Test
     void initRefusesANewerSchema() throws Exception {
         store.init();
-        db.execute("UPDATE core_schema_version SET version = 2 WHERE id = 1");
+        db.execute("UPDATE core_schema_version SET version = " + (Migrations.currentVersion() + 1) + " WHERE id = 1");
         StorageException e = assertThrows(StorageException.class, store::init);
         assertTrue(e.getMessage().contains("newer"), e.getMessage());
     }
@@ -130,5 +131,34 @@ class JdbcPlayerStoreTest {
         assertEquals(1, log.records.size(), "one warning for the skipped rows, not one per row");
         assertEquals(Level.WARNING, log.records.getFirst().getLevel());
         assertTrue(log.records.getFirst().getMessage().contains("Skipped 2 row(s) in core_players"), log.records.getFirst().getMessage());
+    }
+
+    /** Sidebar choice: visible by default, a hidden choice survives a restart, and changing it updates the one row. */
+    @Test
+    void sidebarChoiceDefaultsToVisibleAndTheHiddenChoiceSurvivesAReopen() throws Exception {
+        store.init();
+        assertTrue(store.loadVisible(a), "no row means visible");
+        store.saveVisible(a, false);
+        JdbcPlayerStore restarted = new JdbcPlayerStore(db.factory(), "core_", log.logger);
+        restarted.init();
+        assertFalse(restarted.loadVisible(a));
+        restarted.saveVisible(a, true);
+        assertTrue(restarted.loadVisible(a));
+        assertEquals(1, db.count("core_sidebar_prefs"), "update, not a second row");
+    }
+
+    /** A database written by v1 (core-foundation) gains the sidebar table on start and keeps every player. */
+    @Test
+    void aVersionOneDatabaseMigratesToTheCurrentVersionWithoutLosingPlayers() throws Exception {
+        try (java.sql.Connection c = db.raw()) {
+            SchemaMigrator.migrate(c, "core_", Migrations.all("core_").subList(0, 1));
+        }
+        db.execute("INSERT INTO core_players (uuid, name, first_seen, last_seen) VALUES ('" + a + "', 'Alice', 1, 2)");
+        assertFalse(db.tableExists("core_sidebar_prefs"));
+        store.init();
+        assertEquals(Migrations.currentVersion(), store.schemaVersion());
+        assertTrue(db.tableExists("core_sidebar_prefs"));
+        assertEquals(List.of(a), store.loadAll().stream().map(PlayerRecord::uuid).toList());
+        assertTrue(store.loadVisible(a));
     }
 }
