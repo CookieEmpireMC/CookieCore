@@ -4,6 +4,13 @@ description: Per reviewed area, the commit verified and what passed; re-review o
 metadata:
   type: project
 ---
+## CookieCore `core-scoreboard` (2026-10-27), VERDICT NOT READY (branch review, plugin-coder)
+Review doc: `docs/reviews/2026-10-27-core-scoreboard.md`. Coder code reviewed at `61fa3bb` (src/main untouched by me); tester commits `0624e44..34bd8d7`.
+Areas checked by reading: `scoreboard/*` (SidebarService, Sidebar, SidebarDiff, BoardSink, SidebarPreferences, PlaceholderRegistry, ScoreboardConfig, ScoreboardLayout, CompiledLayout, ScoreboardModule), `text/Template`, `log/WarnOnce`, `api/ScoreboardPlaceholders`, `storage` v2 (`JdbcPlayerStore` sidebar methods, `Migrations`), `command/ScoreboardCommand`, CookieCore enable/reload/disable wiring, `PluginSettings.scoreboardEnabled`, `paper-plugin.yml`, `messages.yml`, `scoreboard.yml`.
+Passed: main-thread rule, task lifecycle, leaks on quit/disable, no setScoreboard on quit, no per-tick reset (flicker), registry thread safety, WarnOnce thread safety, Template never parses values, storage v2 SQL.
+Open: M-1 (MEDIUM, to coder) `ScoreboardConfig` has no seam: keep-last-good test impossible. LOW L-1..L-7, PERF-LOW-1 (every line re-renders when one value changes, ~0.1 ms per viewer per change).
+Tests: 137 run / 5 failing before; 156 run / 0 failing after (`mise run check` BUILD SUCCESS, 21.7 s). Next re-review: `git diff 61fa3bb..HEAD -- src/main` for the M-1 seam, then add the three ScoreboardConfig tests.
+
 ## CookieCore `core-tidy` (2026-10-26), VERDICT READY
 Review doc: `docs/reviews/2026-10-26-core-tidy.md`. Verified at `5873b9c` (tester trim) plus `1f380de`/`a467149` (docs). Coder branch merged at `d21a33a`.
 Areas: `paper-plugin.yml` (loader, `dependencies.server.LuckPerms`, permissions), `CookieCoreLoader` + `cookiecore-libraries.properties` (pom-filtered; jar checked), `PluginSettings.intOrDefault` (F-12), `CookieCore.SHUTDOWN_TIMEOUT_SECONDS`, `docs/architecture.md` Standards.

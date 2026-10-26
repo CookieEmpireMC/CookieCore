@@ -1,6 +1,6 @@
 # Plugin-tester memory (CookieCore)
 
-- [Review ledger](reviews-ledger.md) — core-tidy READY at 5873b9c (docs a467149); core-foundation READY; open L-1 unquoted port truncation, L-2 stale softdepend Javadoc
-- [Test techniques for CookieCore](test-techniques.md) — server-free tests: Proxy senders, Brigadier dispatcher, ServiceLoader stand-in, mutation run of ArchitectureRulesTest
-- [Environment gotchas](env-gotchas.md) — mise works again (2026.10.12); rm -rf gate; stale surefire reports after renames
-- [sources.md](sources.md) — verified lookups (javap of paper-api jar: PluginMeta, MavenLibraryResolver, PluginLoader)
+- [Review ledger](reviews-ledger.md) — core-scoreboard NOT READY (M-1: ScoreboardConfig seam, 61fa3bb); core-tidy READY at 5873b9c; core-foundation READY
+- [Test techniques for CookieCore](test-techniques.md) — server-free tests: Proxy senders/plugins, Brigadier dispatcher, JavaPlugin seams, timing without JMH
+- [Environment gotchas](env-gotchas.md) — mise run check ~22 s; single-class mvn run; sleep blocked; rm -rf gate; ownership-check fails here
+- [sources.md](sources.md) — verified lookups: paper-api jar (PluginMeta, MavenLibraryResolver), MiniMessage lenient vs strict probe (2026-10-26)

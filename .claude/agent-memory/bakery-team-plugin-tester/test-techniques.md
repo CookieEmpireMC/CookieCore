@@ -17,3 +17,7 @@ Verified 2026-10-26 in `src/test/java/dev/casperrs/cookieCore/` (stable while th
 - Perf harness for PlayerDirectory (throwaway `TmpPerfTest`, in-memory PlayerStore returning N PlayerRecords, `Runnable::run` executors, 2000-call JIT warm-up, then average 200 calls): N=500k `namesStartingWith` about 0.005-0.008 ms. Delete afterwards.
 - `ConfigurationSection#getInt(path, def)` returns `def` for a YAML string even if it holds a number (`port: '3308'`), so parse the value yourself. `PluginSettings.intOrDefault` now does; unquoted `3308.5` still truncates (follow-up L-1).
 - Bash tool: heredocs with backticks/apostrophes in markdown or Java text break ("unexpected EOF"); write the text with the Write tool.
+- `Plugin` is an interface: a `Proxy` answering `getName` (identity equality via `proxy == args[0]`) is enough for `PlaceholderRegistry` tests (2026-10-27).
+- Classes that take a `JavaPlugin` (`ScoreboardConfig`, `ConfigLoader`) cannot be tested: data folder, `getResource`, `saveResource` need the server. Ask the coder for a supplier seam instead (M-1 in the core-scoreboard review, 2026-10-27).
+- `Sidebar`, `SidebarService`, `SidebarPreferences` need Bukkit's scoreboard manager or the scheduler; no unit test without MockBukkit (not in the pom). Review them by reading, list the in-game checks.
+- Hot-path timing without JMH (2026-10-27, throwaway test, deleted): `Template.render` for 16 templates with 5 keys each takes about 0.10 ms warm, 0.23 ms cold, on the dev machine. Enough to size a per-second cost (PERF-LOW-1 core-scoreboard).
