@@ -1,6 +1,7 @@
 package dev.casperrs.cookieCore.scoreboard;
 
 import dev.casperrs.cookieCore.api.ScoreboardPlaceholders;
+import dev.casperrs.cookieCore.config.YamlFiles;
 import dev.casperrs.cookieCore.log.WarnOnce;
 import dev.casperrs.cookieCore.storage.SidebarStore;
 import org.bukkit.event.Listener;
@@ -23,7 +24,7 @@ public final class ScoreboardModule {
     public ScoreboardModule(JavaPlugin plugin, SidebarStore store, Executor io, Executor main,
                             SidebarService.TaskRunner runner, BooleanSupplier enabled, Supplier<String> serverName) {
         WarnOnce warnOnce = new WarnOnce(plugin.getLogger());
-        config = new ScoreboardConfig(plugin);
+        config = new ScoreboardConfig(() -> YamlFiles.load(plugin, "scoreboard.yml"), () -> YamlFiles.jarCopy(plugin, "scoreboard.yml"));
         registry = new PlaceholderRegistry(warnOnce);
         SidebarPreferences preferences = new SidebarPreferences(store, io, main, warnOnce);
         service = new SidebarService(runner, plugin.getLogger(), registry, config, preferences, enabled, serverName);

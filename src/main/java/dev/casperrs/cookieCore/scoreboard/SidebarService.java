@@ -173,6 +173,7 @@ public final class SidebarService {
         } catch (RuntimeException e) {
             log.log(Level.WARNING, "Could not update the sidebar of " + player.getName() + "; hiding it for them", e);
             replacedByOthers.add(id);
+            sidebar.close();
             return false;
         }
     }
