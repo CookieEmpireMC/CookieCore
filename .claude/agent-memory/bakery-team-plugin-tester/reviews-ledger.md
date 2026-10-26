@@ -4,7 +4,10 @@ description: Per reviewed area, the commit verified and what passed; re-review o
 metadata:
   type: project
 ---
-## CookieCore `core-scoreboard` (2026-10-27), VERDICT NOT READY (branch review, plugin-coder)
+## CookieCore `core-scoreboard` (2026-10-27), round 2 VERDICT READY
+Round 2 (coder fix `1c85bb8`, merged `965e853`, tester branch `7a7ca6d`): M-1 resolved (ScoreboardConfig takes FileSource + jar supplier; ScoreboardConfigTest 3), L-1 resolved (close() in refresh catch). Open LOW: L-4 one line in scoreboard.yml (outer gray still open; strict test @Disabled until fixed). Suite 160 run, 0 failures, 1 skipped. Re-review scope next time: `git diff 7a7ca6d..HEAD -- src/main` (L-4 line, L-2/L-3/L-5 if fixed).
+
+## CookieCore `core-scoreboard` round 1 (2026-10-27), VERDICT NOT READY (branch review, plugin-coder)
 Review doc: `docs/reviews/2026-10-27-core-scoreboard.md`. Coder code reviewed at `61fa3bb` (src/main untouched by me); tester commits `0624e44..34bd8d7`.
 Areas checked by reading: `scoreboard/*` (SidebarService, Sidebar, SidebarDiff, BoardSink, SidebarPreferences, PlaceholderRegistry, ScoreboardConfig, ScoreboardLayout, CompiledLayout, ScoreboardModule), `text/Template`, `log/WarnOnce`, `api/ScoreboardPlaceholders`, `storage` v2 (`JdbcPlayerStore` sidebar methods, `Migrations`), `command/ScoreboardCommand`, CookieCore enable/reload/disable wiring, `PluginSettings.scoreboardEnabled`, `paper-plugin.yml`, `messages.yml`, `scoreboard.yml`.
 Passed: main-thread rule, task lifecycle, leaks on quit/disable, no setScoreboard on quit, no per-tick reset (flicker), registry thread safety, WarnOnce thread safety, Template never parses values, storage v2 SQL.
