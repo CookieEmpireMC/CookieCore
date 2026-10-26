@@ -1,6 +1,6 @@
 # core-scoreboard
 
-**Status:** in progress  <!-- planned | in progress | review | done -->
+**Status:** review (branch verdict READY; waits for the in-game check)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-27 · **Depends on:** `core-foundation`, `core-tidy` (both merged into `main`). Phase 1 (tab) is skipped by the user's choice; nothing here needs it.
 
 ## Goal
@@ -67,9 +67,9 @@ Shared files (`Perm`, `paper-plugin.yml`, `messages.yml`, `CookieCore`, `CookieC
 ## Status
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
-| resource-pack-researcher | planned | feature branch | n/a | |
-| plugin-coder | planned | `core-scoreboard/plugin-coder` | | |
-| plugin-tester | planned | `core-scoreboard/plugin-tester` | | |
+| resource-pack-researcher | done | feature branch | n/a | `docs/research/core-scoreboard-apis.md` committed |
+| plugin-coder | done (merged, one fix round) | `core-scoreboard/plugin-coder` | READY | sidebar, placeholder registry, toggle, migration v2; M-1 fixed |
+| plugin-tester | done (merged) | `core-scoreboard/plugin-tester` | READY | 160 tests (1 skipped on purpose, L-4); `docs/reviews/2026-10-27-core-scoreboard.md` |
 
 ## Merge order
 1. research note (direct on the feature branch)
