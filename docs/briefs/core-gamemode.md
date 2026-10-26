@@ -1,6 +1,6 @@
 # core-gamemode
 
-**Status:** in progress  <!-- planned | in progress | review | done -->
+**Status:** review (branch verdict READY; waits for the in-game check)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-27 · **Depends on:** `core-foundation`, `core-tidy` (both merged into `main`)
 
 ## Goal
@@ -63,9 +63,9 @@ Shared files (`Perm`, `paper-plugin.yml`, `messages.yml`, `CookieCore`) are also
 ## Status
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
-| resource-pack-researcher | planned | feature branch | n/a | |
-| plugin-coder | planned | `core-gamemode/plugin-coder` | | |
-| plugin-tester | planned | `core-gamemode/plugin-tester` | | |
+| resource-pack-researcher | done | feature branch | n/a | `docs/research/core-gamemode-apis.md` committed |
+| plugin-coder | done (merged) | `core-gamemode/plugin-coder` | READY | gamemode package, 9 permission nodes, fly re-apply, speed scale |
+| plugin-tester | done (merged) | `core-gamemode/plugin-tester` | READY | 160 tests (was 137); `docs/reviews/2026-10-27-core-gamemode.md`; LOW follow-ups |
 
 ## Merge order
 1. research note (direct on the feature branch)
