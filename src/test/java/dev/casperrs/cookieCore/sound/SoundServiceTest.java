@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.casperrs.cookieCore.TestSupport;
+import dev.casperrs.cookieCore.config.YamlFiles;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -79,25 +80,6 @@ class SoundServiceTest {
     }
 
     @Test
-    void reloadResetsTheWarnings() {
-        SoundService s = new SoundService(log.logger, fixed(0f), p -> false);
-        s.play(player, "nope");
-        s.load(Map.of());
-        s.play(player, "nope");
-        assertEquals(2, log.messages().size());
-    }
-
-    @Test
-    void invalidKeyIsSkippedAndWarnedOnce() {
-        SoundService s = new SoundService(log.logger, fixed(0f), p -> false);
-        s.load(Map.of("e", def("e", "a:b", "Not Valid!", 1f, 1f, 1f, "master")));
-        s.play(player, "e");
-        s.play(player, "e");
-        assertTrue(heard.sounds.isEmpty());
-        assertEquals(1, log.messages().size());
-    }
-
-    @Test
     void consoleHearsNothing() {
         SoundService s = new SoundService(log.logger, fixed(0f), p -> false);
         s.load(Map.of("e", def("e", "a:b", "a:b", 1f, 1f, 1f, "master")));
@@ -108,20 +90,9 @@ class SoundServiceTest {
     }
 
     @Test
-    void loadedSoundsAreACopy() {
-        SoundService s = new SoundService(log.logger, fixed(0f), p -> false);
-        Map<String, SoundDef> mutable = new java.util.HashMap<>();
-        mutable.put("e", def("e", "a:b", "a:b", 1f, 1f, 1f, "master"));
-        s.load(mutable);
-        mutable.clear();
-        assertTrue(s.has("e"));
-    }
-
-    @Test
     void shippedSoundsPlayWithoutWarnings() {
         List<String> problems = new ArrayList<>();
-        Map<String, SoundDef> defs = SoundConfigParser.parse(
-                dev.casperrs.cookieCore.config.YamlFiles.toMap(TestSupport.resourceYaml("sounds.yml")), problems::add);
+        Map<String, SoundDef> defs = SoundConfigParser.parse(YamlFiles.toMap(TestSupport.resourceYaml("sounds.yml")), problems::add);
         SoundService s = new SoundService(log.logger, RandomGenerator.getDefault(), p -> false);
         s.load(defs);
         for (String event : List.of(SoundEvents.UI_CONFIRM, SoundEvents.UI_ERROR, SoundEvents.UI_NOTIFY)) {

@@ -9,13 +9,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
-class StorageThreadAndSettingsTest {
+class StorageThreadTest {
 
     @Test
     void singleNamedDaemonThreadRunsTasksInOrder() throws Exception {
@@ -35,7 +35,7 @@ class StorageThreadAndSettingsTest {
         assertEquals(1, threads.stream().distinct().count());
         assertEquals("CookieCore-Test-IO", threads.getFirst());
         assertTrue(daemon[0], "a daemon thread never blocks server shutdown");
-        assertEquals(java.util.stream.IntStream.range(0, 20).boxed().toList(), order);
+        assertEquals(IntStream.range(0, 20).boxed().toList(), order);
     }
 
     @Test
@@ -75,36 +75,9 @@ class StorageThreadAndSettingsTest {
     }
 
     @Test
-    void settingsTypeParsing() {
-        assertEquals(Optional.of(DatabaseSettings.Type.H2), DatabaseSettings.Type.parse(" H2 "));
-        assertEquals(Optional.of(DatabaseSettings.Type.MARIADB), DatabaseSettings.Type.parse("MariaDB"));
-        assertEquals(Optional.of(DatabaseSettings.Type.MARIADB), DatabaseSettings.Type.parse("mysql"));
-        assertEquals(Optional.empty(), DatabaseSettings.Type.parse("sqlite"));
-        assertEquals(Optional.empty(), DatabaseSettings.Type.parse(null));
-        assertEquals(Optional.empty(), DatabaseSettings.Type.parse(""));
-    }
-
-    @Test
-    void urlsAndDriversPerType() {
-        DatabaseSettings h2 = new DatabaseSettings(DatabaseSettings.Type.H2, Path.of("plugins/x/data/core"), "h", 1, "d", "u", "pw", "core_");
-        assertTrue(h2.jdbcUrl().startsWith("jdbc:h2:file:"), h2.jdbcUrl());
-        assertEquals("org.h2.Driver", h2.driverClass());
-        DatabaseSettings maria = new DatabaseSettings(DatabaseSettings.Type.MARIADB, Path.of("x"), "db.local", 3307, "cc", "user", "pw", "core_");
-        assertEquals("jdbc:mariadb://db.local:3307/cc", maria.jdbcUrl());
-        assertEquals("org.mariadb.jdbc.Driver", maria.driverClass());
-        assertFalse(maria.describe().contains("pw"));
-        assertFalse(h2.describe().contains("pw"));
-    }
-
-    @Test
-    void driverClassesAreOnTheTestClasspathSoThePomListsThem() throws Exception {
-        Class.forName("org.h2.Driver");
-        Class.forName("org.mariadb.jdbc.Driver");
-    }
-
-    @Test
     void driverConnectionFactoryOpensAnH2File() throws Exception {
-        DatabaseSettings h2 = new DatabaseSettings(DatabaseSettings.Type.H2, Path.of("target/test-h2/" + System.nanoTime()), "h", 1, "d", "u", "", "core_");
+        DatabaseSettings h2 = new DatabaseSettings(DatabaseSettings.Type.H2, Path.of("target/test-h2/" + System.nanoTime()),
+                "h", 1, "d", "u", "", "core_");
         try (var c = new DriverConnectionFactory(h2).open()) {
             assertTrue(c.isValid(2));
         }

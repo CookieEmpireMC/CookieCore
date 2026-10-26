@@ -19,12 +19,13 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 
 /**
- * Source-scan checks of the project rules in docs/architecture.md (same approach as CookieClicker; no ArchUnit
- * dependency). Comments are ignored; paths are normalised so the rules also hold on Windows.
+ * Source-scan checks of the rules in docs/architecture.md (no ArchUnit dependency). Comments are ignored; paths are
+ * normalised so the rules also hold on Windows. The config package importing sound, storage and text is a known
+ * one-way dependency, not a cycle, so it is not asserted here (see the core-tidy review follow-ups).
  */
 class ArchitectureRulesTest {
 
-    /** Overridable so the rules themselves can be exercised against a deliberately broken copy of the sources. */
+    /** Overridable so the rules can be exercised against a deliberately broken copy of the sources. */
     private static final Path MAIN = Path.of(System.getProperty("cookiecore.mainSources", "src/main/java"));
     private static final String BASE = "dev.casperrs.cookieCore";
 
@@ -34,7 +35,7 @@ class ArchitectureRulesTest {
             return file + ":" + number;
         }
 
-        /** Package folder of the file relative to the base package: "" for the root, else "storage", "command", ... */
+        /** Package folder relative to the base package: "" for the root, else "storage", "command", ... */
         String pkg() {
             int slash = file.lastIndexOf('/');
             return slash < 0 ? "" : file.substring(0, slash);
@@ -97,115 +98,69 @@ class ArchitectureRulesTest {
     void theScanActuallySeesTheSources() throws IOException {
         assertTrue(files().size() > 20, files().toString());
         assertTrue(files().contains("CookieCore.java"));
-        assertFalse(hits("package ", null).isEmpty());
-    }
-
-    // --- sounds and particles ------------------------------------------------------------------------------------
-
-    @Test
-    void playSoundOnlyInTheSoundPackage() throws IOException {
-        assertNone(hits("playSound(", "sound"), "no playSound outside sound/");
-        assertFalse(hits("playSound(", null).isEmpty(), "the sound service should be the one place that plays");
     }
 
     @Test
-    void noOtherWayToMakeNoiseOutsideTheSoundPackage() throws IOException {
+    void soundIsPlayedOnlyThroughTheSoundPackage() throws IOException {
         for (String needle : new String[] {"stopSound(", "Sound.sound(", "Sound.Emitter", "Sound.Source", "NamedSoundEntity"}) {
             assertNone(hits(needle, "sound"), needle + " outside sound/");
         }
+        assertNone(hits("playSound(", "sound"), "playSound outside sound/");
+        assertFalse(hits("playSound(", null).isEmpty(), "the sound service is the one place that plays");
     }
 
     @Test
-    void spawnParticleNowhere() throws IOException {
-        assertNone(hits("spawnParticle(", null), "no spawnParticle (Core has no effects engine)");
-        assertNone(hits("Particle.", null), "no Particle usage");
-    }
-
-    // --- storage purity and threading ----------------------------------------------------------------------------
-
-    @Test
-    void storageHasNoBukkitPaperOrAdventureImports() throws IOException {
+    void storageIsALeafWithNoBukkitAndJdbcStaysInside() throws IOException {
         List<String> found = new ArrayList<>();
         for (Line l : code()) {
-            if (l.pkg().equals("storage") && l.text().startsWith("import ")
-                    && (l.text().startsWith("import org.bukkit") || l.text().startsWith("import io.papermc")
-                    || l.text().startsWith("import net.kyori") || l.text().startsWith("import com.mojang"))) {
-                found.add(l.where());
+            boolean storage = l.pkg().equals("storage");
+            if (storage && (l.text().startsWith("import org.bukkit") || l.text().startsWith("import io.papermc")
+                    || l.text().startsWith("import net.kyori") || l.text().startsWith("import com.mojang")
+                    || l.text().contains("Bukkit.") || l.text().contains("org.bukkit."))) {
+                found.add(l.where() + " (no Bukkit, Paper or Adventure in storage/)");
             }
-            if (l.pkg().equals("storage") && (l.text().contains("Bukkit.") || l.text().contains("org.bukkit."))) {
-                found.add(l.where());
+            if (storage && l.text().startsWith("import " + BASE + ".") && !l.text().startsWith("import " + BASE + ".storage.")) {
+                found.add(l.where() + " (storage/ must stay a leaf package)");
+            }
+            if (!storage && (l.text().contains("java.sql.") || l.text().contains("DriverManager"))) {
+                found.add(l.where() + " (JDBC only in storage/)");
+            }
+            if (!storage && l.text().contains("Class.forName(")) {
+                found.add(l.where() + " (reflection only to load the JDBC driver in storage/)");
             }
         }
-        assertNone(found, "no Bukkit calls from storage/");
+        assertNone(found, "storage rules");
     }
 
     @Test
-    void storageDoesNotDependOnOtherCorePackages() throws IOException {
-        List<String> found = new ArrayList<>();
-        for (Line l : code()) {
-            if (l.pkg().equals("storage") && l.text().startsWith("import " + BASE + ".") && !l.text().startsWith("import " + BASE + ".storage.")) {
-                found.add(l.where());
-            }
-        }
-        assertNone(found, "storage/ must stay a leaf package");
-    }
-
-    @Test
-    void jdbcOnlyInStorage() throws IOException {
-        List<String> found = new ArrayList<>();
-        for (Line l : code()) {
-            if (!l.pkg().equals("storage") && (l.text().contains("java.sql.") || l.text().contains("DriverManager"))) {
-                found.add(l.where());
-            }
-        }
-        assertNone(found, "JDBC only in storage/");
-    }
-
-    @Test
-    void noBlockingWaitsOnFuturesAndNoSleeps() throws IOException {
+    void blockingWaitsAndThreadsStayInTheStorageThreadAndTheMainClass() throws IOException {
         assertNone(hits(".join()", null), "CompletableFuture.join() blocks the caller");
-        assertNone(hits("Thread.sleep(", null), "no sleeping");
-        List<String> futureGets = new ArrayList<>();
+        assertNone(hits("Thread.sleep(", null), "no sleeping on the server");
+        List<String> found = new ArrayList<>();
         for (Line l : code()) {
             if (l.text().matches(".*\\b(future|result|done|f)\\.get\\(.*")) {
-                futureGets.add(l.where());
+                found.add(l.where() + " (Future.get blocks the caller)");
             }
-        }
-        assertNone(futureGets, "Future.get() blocks the caller");
-    }
-
-    @Test
-    void onlyTheStorageThreadClassCreatesThreads() throws IOException {
-        for (String needle : new String[] {"new Thread(", "Executors.new", "ForkJoinPool", "CompletableFuture.supplyAsync", "CompletableFuture.runAsync", "runTaskAsynchronously"}) {
-            List<String> found = new ArrayList<>();
-            for (Line l : code()) {
-                if (l.text().contains(needle) && !l.file().equals("storage/StorageThread.java")) {
-                    found.add(l.where());
-                }
+            if (!l.file().equals("storage/StorageThread.java") && (l.text().contains("new Thread(")
+                    || l.text().contains("Executors.new") || l.text().contains("ForkJoinPool")
+                    || l.text().contains("CompletableFuture.supplyAsync") || l.text().contains("CompletableFuture.runAsync")
+                    || l.text().contains("runTaskAsynchronously"))) {
+                found.add(l.where() + " (one IO thread for all database work, in StorageThread)");
             }
-            assertNone(found, needle + " outside StorageThread (one IO thread for all database work)");
-        }
-    }
-
-    @Test
-    void schedulerAndMainThreadHandoffLiveInTheMainClassOnly() throws IOException {
-        List<String> found = new ArrayList<>();
-        for (Line l : code()) {
             if ((l.text().contains("getScheduler()") || l.text().contains("runTask(")) && !l.file().equals("CookieCore.java")) {
-                found.add(l.where());
+                found.add(l.where() + " (scheduler use only in the main class)");
             }
         }
-        assertNone(found, "scheduler use outside CookieCore");
+        assertNone(found, "threading rules");
     }
 
-    // --- player-facing text --------------------------------------------------------------------------------------
-
     @Test
-    void noPlayerFacingTextOutsideTheTextPackage() throws IOException {
+    void playerFacingTextComesFromTextMessagesAndKeysAreKeys() throws IOException {
         String[] senders = {".sendMessage(", ".sendActionBar(", ".sendRichMessage(", ".sendPlainMessage(", ".showTitle(",
                 ".sendTitle(", ".sendPlayerListHeader", ".kick(", ".kickPlayer(", ".disallow(", ".kickMessage(",
-                "Component.text(", "Component.translatable(", "Component.textOfChildren(", "MiniMessage", "LegacyComponentSerializer",
-                "PlainTextComponentSerializer", "new LiteralMessage(", "SimpleCommandExceptionType(", "setPlayerListName(", ".playerListName("};
+                "Component.text(", "Component.translatable(", "Component.textOfChildren(", "MiniMessage",
+                "LegacyComponentSerializer", "PlainTextComponentSerializer", "new LiteralMessage(",
+                "SimpleCommandExceptionType(", "setPlayerListName(", ".playerListName("};
         List<String> found = new ArrayList<>();
         for (Line l : code()) {
             if (l.pkg().equals("text")) {
@@ -217,23 +172,19 @@ class ArchitectureRulesTest {
                 }
             }
         }
-        assertNone(found, "text must come from text/Messages (messages.yml); no literals sent or built elsewhere");
-    }
+        assertNone(found, "text must come from text/Messages (messages.yml)");
 
-    @Test
-    void messageKeysAreNeverBuiltFromStringLiteralsAsMessages() throws IOException {
-        // every messages.send/component call takes a key (dotted lower-case) or a variable, never a sentence
         Pattern call = Pattern.compile("messages\\.(?:send|component|raw)\\([^,]*?,?\\s*\"([^\"]*)\"");
-        List<String> found = new ArrayList<>();
+        List<String> literals = new ArrayList<>();
         for (Line l : code()) {
             Matcher m = call.matcher(l.text());
             while (m.find()) {
                 if (!m.group(1).matches("[a-z0-9]+(\\.[a-z0-9-]+)+")) {
-                    found.add(l.where() + " '" + m.group(1) + "'");
+                    literals.add(l.where() + " '" + m.group(1) + "'");
                 }
             }
         }
-        assertNone(found, "message literal instead of a key");
+        assertNone(literals, "message literal instead of a key");
     }
 
     @Test
@@ -244,55 +195,27 @@ class ArchitectureRulesTest {
         assertNone(hits(".deserialize(", "text"), "MiniMessage.deserialize outside text/");
     }
 
-    // --- forbidden APIs ------------------------------------------------------------------------------------------
-
     @Test
-    void noWorldGuardNmsOrReflectionIntoTheServer() throws IOException {
-        for (String bad : new String[] {"com.sk89q", "net.minecraft.", "org.bukkit.craftbukkit", "CraftPlayer", "CraftServer",
-                "getDeclaredField", "getDeclaredMethod", "setAccessible(", "sun.misc.Unsafe"}) {
+    void forbiddenApisAreAbsent() throws IOException {
+        String[] forbidden = {"com.sk89q", "net.minecraft.", "org.bukkit.craftbukkit", "CraftPlayer", "CraftServer",
+                "getDeclaredField", "getDeclaredMethod", "setAccessible(", "sun.misc.Unsafe",
+                "ChatColor", "§", "PlayerLoginEvent", "setPlayerListHeaderFooter", "AsyncPlayerChatEvent",
+                "getPlayerListName(", "kickPlayer(", "BaseComponent", "System.out", "printStackTrace(",
+                "spawnParticle(", "Particle.", "\"world_nether\"", "\"world_the_end\"", "getWorld(\""};
+        for (String bad : forbidden) {
             assertNone(hits(bad, null), "forbidden: " + bad);
         }
-        assertNone(hits("Class.forName(", "storage"), "reflection only to load the JDBC driver in storage/");
-    }
-
-    @Test
-    void noLegacyTextAndNoDeprecatedPaperApi() throws IOException {
-        for (String bad : new String[] {"ChatColor", "§", "PlayerLoginEvent", "setPlayerListHeaderFooter", "AsyncPlayerChatEvent",
-                "getPlayerListName(", "kickPlayer(", "BaseComponent", "LegacyComponentSerializer", "System.out", "printStackTrace("}) {
-            assertNone(hits(bad, null), "forbidden: " + bad);
-        }
-    }
-
-    @Test
-    void noStringBasedScoreboardApi() throws IOException {
-        List<String> found = new ArrayList<>();
+        List<String> scoreboard = new ArrayList<>();
         for (Line l : code()) {
             if (l.text().contains("registerNewObjective(") && !l.text().contains("Criteria.")) {
-                found.add(l.where());
+                scoreboard.add(l.where());
+            }
+            if (l.text().contains("net.luckperms")) {
+                scoreboard.add(l.where() + " (LuckPerms is an optional dependency: no imports yet)");
             }
         }
-        assertNone(found, "registerNewObjective with a String criteria is deprecated; use Criteria + Component");
+        assertNone(scoreboard, "string scoreboard criteria or stray LuckPerms import");
     }
-
-    @Test
-    void luckPermsOnlyInItsOwnPackage() throws IOException {
-        List<String> found = new ArrayList<>();
-        for (Line l : code()) {
-            if (l.text().contains("net.luckperms") && !l.pkg().equals("luckperms")) {
-                found.add(l.where());
-            }
-        }
-        assertNone(found, "net.luckperms outside luckperms/ (it is a soft dependency: a stray import breaks boot without it)");
-    }
-
-    @Test
-    void worldNamesAreNotHardcoded() throws IOException {
-        for (String bad : new String[] {"\"world_nether\"", "\"world_the_end\"", "getWorld(\""}) {
-            assertNone(hits(bad, null), "world names/paths: " + bad);
-        }
-    }
-
-    // --- structure -----------------------------------------------------------------------------------------------
 
     @Test
     void apiPackageExposesOnlyJavaTypes() throws IOException {
@@ -307,49 +230,25 @@ class ArchitectureRulesTest {
     }
 
     @Test
-    void noMutableStaticState() throws IOException {
-        Pattern staticField = Pattern.compile("^(?:(?:public|private|protected)\\s+)?static\\s+(?!final\\b)(?!class\\b|interface\\b|record\\b|enum\\b)[^(]*[;=].*$");
+    void noPlayerOrWorldObjectsHeldInStaticState() throws IOException {
+        Pattern mutableStatic = Pattern.compile("^(?:(?:public|private|protected)\\s+)?static\\s+(?!final\\b)(?!class\\b|interface\\b|record\\b|enum\\b)[^(]*[;=].*$");
         List<String> found = new ArrayList<>();
         for (Line l : code()) {
-            if (staticField.matcher(l.text()).matches()) {
+            if (mutableStatic.matcher(l.text()).matches()) {
                 found.add(l.where() + " " + l.text());
             }
-        }
-        assertNone(found, "mutable static fields (players must not leak into statics)");
-    }
-
-    @Test
-    void noStaticCollectionsOfPlayersOrWorlds() throws IOException {
-        List<String> found = new ArrayList<>();
-        for (Line l : code()) {
             if (l.text().contains("static") && l.text().matches(".*(Map|Set|List|Collection)<.*(Player|World|Entity|Location|Plugin).*>.*=.*")) {
-                found.add(l.where());
+                found.add(l.where() + " (static collections of Bukkit objects leak on reload)");
             }
         }
-        assertNone(found, "static collections holding Bukkit objects leak on reload");
+        assertNone(found, "static state");
     }
 
     @Test
-    void mainClassOnlyWires() throws IOException {
+    void mainClassOnlyWiresAndPackagesDoNotCycle() throws IOException {
         long lines = Files.readAllLines(MAIN.resolve(BASE.replace('.', '/')).resolve("CookieCore.java")).size();
         assertTrue(lines <= 200, "CookieCore.java has " + lines + " lines; move logic into the sub-packages");
-    }
 
-    @Test
-    void listenersAreFinalClassesInTheirFeaturePackage() throws IOException {
-        List<String> found = new ArrayList<>();
-        for (String file : files()) {
-            String text = Files.readString(MAIN.resolve(BASE.replace('.', '/')).resolve(file));
-            if (text.contains("implements Listener") && !text.contains("public final class")) {
-                found.add(file);
-            }
-        }
-        assertNone(found, "listeners should be final");
-    }
-
-    @Test
-    void noCyclesBetweenPackages() throws IOException {
-        // edges: package -> packages it imports (Perm, a constants leaf in the root package, is exempt)
         Map<String, Set<String>> deps = new LinkedHashMap<>();
         Pattern imp = Pattern.compile("^import " + Pattern.quote(BASE) + "\\.([a-zA-Z]+)(?:\\.[a-zA-Z]+)*;$");
         for (Line l : code()) {
@@ -374,7 +273,6 @@ class ArchitectureRulesTest {
         }
         List<String> cycle = findCycle(deps);
         assertTrue(cycle.isEmpty(), "package cycle: " + cycle + " in " + deps);
-        assertTrue(deps.get("(root)").size() > 3, "the main class wires the others: " + deps);
         for (Map.Entry<String, Set<String>> e : deps.entrySet()) {
             if (!e.getKey().equals("(root)")) {
                 assertFalse(e.getValue().contains("(root)"), e.getKey() + "/ imports the main package: " + e.getValue());

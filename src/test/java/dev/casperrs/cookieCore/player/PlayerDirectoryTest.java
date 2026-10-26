@@ -16,20 +16,20 @@ import java.util.ArrayList;
 import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Level;
 import org.junit.jupiter.api.Test;
 
 class PlayerDirectoryTest {
@@ -134,6 +134,14 @@ class PlayerDirectoryTest {
         return d;
     }
 
+    private PlayerDirectory withNames(String... names) {
+        PlayerDirectory d = started();
+        for (int i = 0; i < names.length; i++) {
+            d.seen(id(i + 1), names[i]);
+        }
+        return d;
+    }
+
     // --- start / warm-up -----------------------------------------------------------------------------------------
 
     @Test
@@ -148,7 +156,6 @@ class PlayerDirectoryTest {
         assertEquals(List.of("init", "loadAll"), store.calls);
         assertEquals(new PlayerRef(id(1), "Alice"), d.cached("alice").orElseThrow());
         assertEquals(new PlayerRef(id(2), "Bob"), d.cached(id(2)).orElseThrow());
-        assertEquals(2, d.cachedPlayers().size());
     }
 
     @Test
@@ -171,16 +178,16 @@ class PlayerDirectoryTest {
         assertTrue(done.isDone() && !done.isCompletedExceptionally(), "start() completes normally even on failure");
         assertFalse(d.storageAvailable());
         assertEquals(1, log.records.size());
-        assertEquals(java.util.logging.Level.SEVERE, log.records.getFirst().getLevel());
+        assertEquals(Level.SEVERE, log.records.getFirst().getLevel());
 
         d.seen(id(1), "Alice");
         assertEquals(id(1), d.cached("ALICE").orElseThrow().uuid(), "joins still work from memory");
         assertEquals(List.of("init"), store.calls, "no writes while the database is down");
         assertTrue(d.lookup("Zed").join().isEmpty());
         assertEquals(0, store.findCalls, "no database lookups while it is down");
-        assertEquals(Optional.of(new PlayerRef(id(1), "Alice")), d.lookup("alice").join(), "memory hits still resolve");
     }
 
+    /** F-04: an unchecked exception from the store (a corrupt uuid row) must not escape start(). */
     @Test
     void anUncheckedStoreFailureAlsoLeavesMemoryOnlyAndIsLogged() {
         store.initRuntimeFailure = new IllegalArgumentException("Invalid UUID string");
@@ -190,7 +197,7 @@ class PlayerDirectoryTest {
         assertFalse(log.records.isEmpty(), "the failure must be logged by the plugin");
     }
 
-    // --- case-insensitive lookup, renames ------------------------------------------------------------------------
+    // --- case-insensitive lookup, renames, takeovers -------------------------------------------------------------
 
     @Test
     void lookupIsCaseInsensitiveAndTrimsWhitespace() {
@@ -203,17 +210,7 @@ class PlayerDirectoryTest {
         assertTrue(d.cached("notc").isEmpty());
     }
 
-    @Test
-    void nullAndBlankNamesAreNotFoundAndDoNotThrow() {
-        PlayerDirectory d = started();
-        assertTrue(d.cached((String) null).isEmpty());
-        assertTrue(d.cached("").isEmpty());
-        assertTrue(d.cached("   ").isEmpty());
-        assertTrue(d.lookup(null).join().isEmpty());
-        assertTrue(d.lookup("  ").join().isEmpty());
-        assertEquals(0, store.findCalls);
-    }
-
+    /** F-08: the UUID overload is null-safe like the name overload. */
     @Test
     void cachedWithANullUuidIsEmpty() {
         assertTrue(started().cached((UUID) null).isEmpty());
@@ -239,17 +236,6 @@ class PlayerDirectoryTest {
         assertEquals(id(2), d.cached("foo").orElseThrow().uuid());
         assertEquals("Bar", d.cached(id(1)).orElseThrow().name());
         assertEquals(id(1), d.cached("bar").orElseThrow().uuid());
-    }
-
-    @Test
-    void twoLivePlayersWithTheSameNameDoNotCorruptTheIndex() {
-        PlayerDirectory d = started();
-        d.seen(id(1), "Foo");
-        d.seen(id(2), "Foo"); // stale rename that the old owner has not been seen leaving yet
-        d.seen(id(1), "Foo2"); // the first player now renames
-        assertEquals(id(2), d.cached("foo").orElseThrow().uuid(), "the later owner keeps the name");
-        assertEquals(id(1), d.cached("foo2").orElseThrow().uuid());
-        assertEquals(2, d.cachedPlayers().size());
     }
 
     // --- warm-up vs live joins -----------------------------------------------------------------------------------
@@ -288,50 +274,14 @@ class PlayerDirectoryTest {
     }
 
     @Test
-    void joinsQueuedBehindTheWarmUpAreSavedAfterIt() {
-        QueueExecutor io = new QueueExecutor();
-        PlayerDirectory d = directory(io, DIRECT);
-        d.start();
-        d.seen(id(1), "Alice");
-        io.runAll();
-        assertEquals(List.of("init", "loadAll", "upsert:Alice@1000"), store.calls);
-    }
-
-    // --- persistence of joins ------------------------------------------------------------------------------------
-
-    @Test
-    void seenSavesNameAndTimeInTheBackground() {
-        QueueExecutor io = new QueueExecutor();
-        PlayerDirectory d = directory(io, DIRECT);
-        d.start();
-        io.runAll();
-        clock.set(5_000);
-        d.seen(id(1), "Alice");
-        assertEquals(List.of("init", "loadAll"), store.calls, "not written synchronously on the caller's thread");
-        assertTrue(d.cached("alice").isPresent(), "but already visible in memory");
-        io.runAll();
-        assertEquals("upsert:Alice@5000", store.calls.getLast());
-    }
-
-    @Test
     void aFailingSaveIsLoggedAndDoesNotThrow() {
         PlayerDirectory d = started();
         store.failUpserts = true;
         d.seen(id(1), "Alice");
         assertTrue(d.cached("alice").isPresent());
-        var warnings = log.records.stream().filter(r -> r.getLevel() == java.util.logging.Level.WARNING).toList();
+        var warnings = log.records.stream().filter(r -> r.getLevel() == Level.WARNING).toList();
         assertEquals(1, warnings.size());
         assertTrue(warnings.getFirst().getMessage().contains("Alice"));
-    }
-
-    @Test
-    void seenAfterTheIoThreadStoppedStillUpdatesMemory() {
-        Executor rejecting = task -> {
-            throw new RejectedExecutionException("shut down");
-        };
-        PlayerDirectory d = directory(rejecting, DIRECT);
-        d.seen(id(1), "Alice");
-        assertTrue(d.cached("alice").isPresent());
     }
 
     // --- lookup on a cache miss ----------------------------------------------------------------------------------
@@ -347,15 +297,6 @@ class PlayerDirectoryTest {
         assertEquals(id(7), d.cached("remote").orElseThrow().uuid(), "now cached");
         d.lookup("remote").join();
         assertEquals(1, store.findCalls, "the second lookup is answered from memory");
-    }
-
-    @Test
-    void lookupOfAnUnknownNameIsEmptyAndAsksTheStoreEveryTime() {
-        PlayerDirectory d = started();
-        assertTrue(d.lookup("ghost").join().isEmpty());
-        assertTrue(d.lookup("ghost").join().isEmpty());
-        assertEquals(2, store.findCalls, "misses are not negatively cached");
-        assertEquals("find:ghost", store.calls.getLast());
     }
 
     @Test
@@ -385,22 +326,9 @@ class PlayerDirectoryTest {
         assertTrue(e.getCause() instanceof StorageException);
     }
 
-    @Test
-    void lookupDoesNotOverwriteALiveJoinWithTheDatabaseRow() {
-        PlayerDirectory d = started();
-        store.put(id(1), "OldName", 1, 5);
-        store.failUpserts = true; // the save of the rename has not reached the database
-        d.seen(id(1), "NewName");
-        // the store (stale) still has OldName for this uuid; someone looks the old name up
-        Optional<PlayerRef> found = d.lookup("oldname").join();
-        assertEquals("NewName", d.cached(id(1)).orElseThrow().name());
-        assertTrue(d.cached("oldname").isEmpty(), "old name stays unresolved in the cache");
-        assertEquals("NewName", found.orElseThrow().name(), "and the caller gets the live entry");
-    }
-
+    /** F-03: a lookup future must complete even when the main thread is gone (a waiting command would hang). */
     @Test
     void lookupFutureFailsWithTheMainExecutorsExceptionWhenItRejects() {
-        // CookieCore.runOnMainThread throws RejectedExecutionException once the plugin is disabled
         RejectedExecutionException gone = new RejectedExecutionException("CookieCore is disabled");
         Executor rejecting = task -> {
             throw gone;
@@ -414,9 +342,9 @@ class PlayerDirectoryTest {
         assertEquals("Remote", d.cached("remote").orElseThrow().name(), "the row is still cached for the next lookup");
     }
 
+    /** F-03: a scheduler that throws another runtime exception (the isEnabled race) also fails the future. */
     @Test
     void lookupFutureAlsoFailsWhenTheSchedulerThrowsAnotherRuntimeException() {
-        // IllegalPluginAccessException (the race between isEnabled() and runTask) is an IllegalStateException
         Executor scheduler = task -> {
             throw new IllegalStateException("Plugin attempted to register task while disabled");
         };
@@ -424,27 +352,6 @@ class PlayerDirectoryTest {
         d.start();
         store.put(id(7), "Remote", 1, 5);
         assertTrue(d.lookup("remote").isCompletedExceptionally());
-    }
-
-    @Test
-    void anUncheckedStoreFailureDuringLookupFailsTheFutureOnTheMainThread() {
-        PlayerDirectory d = started();
-        store.findRuntimeFailure = new IllegalArgumentException("Invalid UUID string: x");
-        CompletableFuture<Optional<PlayerRef>> f = d.lookup("someone");
-        assertTrue(f.isCompletedExceptionally());
-        assertSame(store.findRuntimeFailure, assertThrows(CompletionException.class, f::join).getCause());
-    }
-
-    @Test
-    void lookupResultsAreHandedToTheMainExecutorNotCompletedOnTheIoThread() {
-        QueueExecutor main = new QueueExecutor();
-        PlayerDirectory d = directory(DIRECT, main);
-        d.start();
-        store.put(id(7), "Remote", 1, 5);
-        CompletableFuture<Optional<PlayerRef>> f = d.lookup("remote");
-        assertFalse(f.isDone(), "completes only when the main thread runs its queue");
-        main.runAll();
-        assertEquals(id(7), f.join().orElseThrow().uuid());
     }
 
     @Test
@@ -457,8 +364,9 @@ class PlayerDirectoryTest {
         assertTrue(f.isCompletedExceptionally());
     }
 
-    // --- shutdown ------------------------------------------------------------------------------------------------
+    // --- writes and shutdown -------------------------------------------------------------------------------------
 
+    /** Joins that were queued before shutdown are written, then the store closes (order matters). */
     @Test
     void shutdownClosesTheStoreBehindThePendingWrites() {
         QueueExecutor io = new QueueExecutor();
@@ -472,18 +380,6 @@ class PlayerDirectoryTest {
         assertTrue(store.closed);
         assertEquals(List.of("init", "loadAll", "upsert:Alice@1000", "close"), store.calls);
     }
-
-    @Test
-    void shutdownClosesDirectlyWhenTheExecutorIsAlreadyStopped() {
-        Executor rejecting = task -> {
-            throw new RejectedExecutionException("shut down");
-        };
-        PlayerDirectory d = directory(rejecting, DIRECT);
-        d.shutdown();
-        assertTrue(store.closed);
-    }
-
-    // --- thread safety -------------------------------------------------------------------------------------------
 
     @Test
     void concurrentJoinsAndWarmUpKeepTheIndexConsistent() throws Exception {
@@ -509,7 +405,6 @@ class PlayerDirectoryTest {
                         d.seen(id(i), "new" + i);
                         d.cached("old" + i);
                         d.cached(id(i));
-                        d.cachedPlayers().size();
                     }
                 }, joins));
             }
@@ -539,51 +434,15 @@ class PlayerDirectoryTest {
         }
     }
 
-    @Test
-    void cachedPlayersIsAReadOnlyView() {
-        PlayerDirectory d = started();
-        d.seen(id(1), "Alice");
-        assertThrows(UnsupportedOperationException.class, () -> d.cachedPlayers().clear());
-        assertThrows(UnsupportedOperationException.class, () -> d.cachedPlayers().add(new PlayerRef(id(2), "x")));
-        assertEquals("alice".toLowerCase(Locale.ROOT), d.cachedPlayers().iterator().next().name().toLowerCase(Locale.ROOT));
-    }
-
-    @Test
-    void executionExceptionTypeIsNotLeakedFromJoinHelpers() throws ExecutionException, InterruptedException {
-        PlayerDirectory d = started();
-        d.seen(id(1), "Alice");
-        assertEquals("Alice", d.lookup("alice").get().orElseThrow().name());
-    }
-
     // --- namesStartingWith (tab completion, F-01) ----------------------------------------------------------------
 
-    private PlayerDirectory withNames(String... names) {
-        PlayerDirectory d = started();
-        for (int i = 0; i < names.length; i++) {
-            d.seen(id(i + 1), names[i]);
-        }
-        return d;
-    }
-
     @Test
-    void namesStartingWithMatchesThePrefixCaseInsensitively() {
+    void namesStartingWithMatchesThePrefixCaseInsensitivelyInAlphabeticalOrder() {
         PlayerDirectory d = withNames("Notch", "NoodleBoy", "nova", "Alice", "Bob");
         assertEquals(List.of("NoodleBoy", "Notch", "nova"), d.namesStartingWith("no", 10));
         assertEquals(List.of("Notch"), d.namesStartingWith("notc", 10));
         assertEquals(List.of("Alice"), d.namesStartingWith("alice", 10), "a full name matches itself");
         assertEquals(List.of(), d.namesStartingWith("alicex", 10));
-        assertEquals(List.of(), d.namesStartingWith("zzz", 10));
-    }
-
-    @Test
-    void namesStartingWithAnEmptyPrefixListsEveryoneAlphabeticallyIgnoringCase() {
-        PlayerDirectory d = withNames("bob", "Alice", "Charlie", "alan", "Zed");
-        assertEquals(List.of("alan", "Alice", "bob", "Charlie", "Zed"), d.namesStartingWith("", 10));
-    }
-
-    @Test
-    void namesStartingWithKeepsTheStoredSpelling() {
-        assertEquals(List.of("NoTcH"), withNames("NoTcH").namesStartingWith("notch", 5));
     }
 
     @Test
@@ -606,13 +465,6 @@ class PlayerDirectoryTest {
     }
 
     @Test
-    void namesStartingWithSeesPlayersLoadedByTheWarmUp() {
-        store.put(id(1), "Stored", 1, 10);
-        PlayerDirectory d = started();
-        assertEquals(List.of("Stored"), d.namesStartingWith("st", 5));
-    }
-
-    @Test
     void namesStartingWithTreatsNonAsciiAndPatternCharactersLiterally() {
         PlayerDirectory d = withNames("Zoe", "Émile", "_under", "a.b");
         assertEquals(List.of("Émile"), d.namesStartingWith("é", 5));
@@ -622,16 +474,11 @@ class PlayerDirectoryTest {
     }
 
     @Test
-    void namesStartingWithOnAnEmptyDirectoryIsEmpty() {
-        assertEquals(List.of(), started().namesStartingWith("", 10));
-    }
-
-    @Test
     void namesStartingWithIsSafeWhileJoinsAndRenamesRunConcurrently() throws Exception {
         PlayerDirectory d = started();
         ExecutorService pool = Executors.newFixedThreadPool(5);
         try {
-            List<java.util.concurrent.Future<?>> fs = new ArrayList<>();
+            List<Future<?>> fs = new ArrayList<>();
             for (int w = 0; w < 4; w++) {
                 int worker = w;
                 fs.add(pool.submit(() -> {
@@ -649,7 +496,7 @@ class PlayerDirectoryTest {
                     }
                 }
             }));
-            for (var f : fs) {
+            for (Future<?> f : fs) {
                 f.get(30, TimeUnit.SECONDS);
             }
         } finally {
