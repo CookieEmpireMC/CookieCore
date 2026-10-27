@@ -1,6 +1,6 @@
 # core-foundation
 
-**Status:** review (integration verdict READY; waits for the user's in-game check)  <!-- planned | in progress | review | done -->
+**Status:** done (merged, PR #4; the in-game check is still open)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-20 · **Depends on:** none (phase 0 of [ROADMAP](ROADMAP.md))
 
 ## Goal
