@@ -37,3 +37,4 @@ Verified 2026-10-27 (core-moderation-bans), stable for 26.3.build.205:
   - Brigadier: `/x Steve -s` takes the `-s` literal over a greedy reason (the flag wins); `-sx`, `-S` and a trailing `-s` in a reason are text. Verified with the shipped Brigadier.
   - `AsyncPlayerPreLoginEvent`: the 2-, 3- and 4-arg constructors reach `Bukkit.createProfile` (NPE without a server); the 5- and 6-arg are `[removal]` in 26.3 (javac warning in `mise run check`). Use the 8-arg `(name, address, SocketAddress, uuid, transferred, PlayerProfile, hostname, PlayerLoginConnection)` with Proxy stand-ins for the profile (`getId`, `getName`) and the connection (javac probe, 2026-10-27: no warning).
   - Key scan in `MessagesTest` skips comment lines (Javadoc examples name keys too).
+  - `ModerationModule` runs in tests with `Runnable::run` executors: the login-triggered retry then completes inside the refused login, so the next login sees the loaded bans (2026-10-27).

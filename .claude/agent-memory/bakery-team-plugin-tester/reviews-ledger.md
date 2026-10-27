@@ -4,6 +4,9 @@ description: Per reviewed area, the commit verified and what passed; re-review o
 metadata:
   type: project
 ---
+## CookieCore `core-moderation-bans` (2026-10-27), round 2 VERDICT READY (conditional on Rick's boot-outage decision)
+Round 2 reviewed `git diff 2531cd6..HEAD -- src/main` (coder `d52a5a5`, `c451740`): ModerationModule fail-closed load (one in flight, flag cleared in finally and on rejection, usable/loaded volatile order), ModerationListener retryLoad + L-5, ModerationService background/finish (busy in finally, Error rethrown), messages.yml key removal, CommandKit Javadoc. Tests +2 (`ModerationModuleTest`, Error case in `ModerationServiceTest`): 205 run, 0 failed. Open: `storageAvailable()==false` at boot still opens logins (residual of M-1, Rick to confirm); R2-L1 kick during failed load says 'database not available'; R2-L2 retry attempts serialise on the IO thread (PERF-LOW). Next re-review: `git diff <coder commit after c451740>..HEAD -- src/main`.
+
 ## CookieCore `core-moderation-bans` (2026-10-27), VERDICT NOT READY (round 1)
 Review doc: `docs/reviews/2026-10-27-core-moderation-bans.md`. Coder branch `951091b` (DONE). Tester branch `core-moderation-bans/plugin-tester` holds 20 new tests (suite 203 run, 1 skipped, `mise run check` BUILD SUCCESS) and the architecture update.
 Areas read: `moderation/*` (ModerationService, BanList, ModerationListener, ModerationModule, the four commands, SilentReasonTail, BannedPlayerArgument, Actor), storage punishment methods + Migrations v3 + PunishmentStore/Type/NewPunishment/BanRecord, `text/Messages` (banScreen, deny*, thread safety), TimeText, CookieCore wiring, Perm, paper-plugin.yml, messages.yml moderation block.
