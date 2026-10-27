@@ -254,28 +254,33 @@ public final class ModerationService {
     private <T> void background(CommandSender sender, UUID key, String what, Call<T> call, Consumer<T> onSuccess) {
         try {
             io.execute(() -> {
-                T value = null;
-                Exception error = null;
                 try {
-                    value = call.run();
-                } catch (StorageException | RuntimeException e) {
-                    error = e;
-                }
-                T outcome = value;
-                Exception failure = error;
-                handBack(() -> {
-                    busy.remove(key);
-                    if (failure != null) {
-                        log.log(Level.WARNING, "Could not record the " + what + " in the database; nothing was changed", failure);
-                        fail(sender, "moderation.error.failed");
-                    } else {
-                        onSuccess.accept(outcome);
+                    T outcome = call.run();
+                    handBack(() -> finish(sender, key, null, what, () -> onSuccess.accept(outcome)));
+                } catch (Throwable failure) { // an Error must free the target too, then keeps propagating
+                    handBack(() -> finish(sender, key, failure, what, () -> { }));
+                    if (failure instanceof Error error) {
+                        throw error;
                     }
-                });
+                }
             });
         } catch (RejectedExecutionException shutDown) {
             busy.remove(key);
             fail(sender, "moderation.error.failed");
+        }
+    }
+
+    /** Main thread: frees the target, then reports the failure or runs {@code onSuccess}. */
+    private void finish(CommandSender sender, UUID key, @Nullable Throwable failure, String what, Runnable onSuccess) {
+        try {
+            if (failure != null) {
+                log.log(Level.WARNING, "Could not record the " + what + " in the database; nothing was changed", failure);
+                fail(sender, "moderation.error.failed");
+            } else {
+                onSuccess.run();
+            }
+        } finally {
+            busy.remove(key);
         }
     }
 

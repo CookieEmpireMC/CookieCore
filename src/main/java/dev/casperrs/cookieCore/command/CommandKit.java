@@ -32,7 +32,7 @@ import java.util.function.Predicate;
  *             .then(kit.reason("reason").executes(kit.checked(Perm.MODERATION_MUTE, ctx -> {
  *                 PlayerRef target = CommandKit.player(ctx, "target");
  *                 Duration time = CommandKit.duration(ctx, "time");
- *                 return kit.done(ctx, "moderation.muted", Placeholder.unparsed("player", target.name()));
+ *                 return kit.done(ctx, "moderation.banned", Placeholder.unparsed("player", target.name()));
  *             })))))
  * }</pre>
  *

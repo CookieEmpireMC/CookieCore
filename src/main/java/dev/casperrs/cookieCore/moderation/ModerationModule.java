@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongSupplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -32,8 +34,11 @@ public final class ModerationModule {
     private final BanList bans = new BanList();
     private final ModerationService service;
     private final ModerationListener listener;
-    /** False when the start-up load failed: bans then cannot be enforced or changed, same as with no database. */
+    /** False until the active bans are loaded: bans cannot be changed meanwhile, same as with no database. */
     private volatile boolean usable;
+    private final AtomicBoolean loading = new AtomicBoolean();
+    /** Storage thread only. */
+    private boolean loadFailureLogged;
 
     /** {@code io} is the storage thread, {@code main} runs a task on the main thread. */
     public ModerationModule(Logger log, PunishmentStore store, Executor io, Executor main, Messages messages,
@@ -46,7 +51,7 @@ public final class ModerationModule {
         this.clock = clock;
         this.service = new ModerationService(store, io, main, bans, messages, sounds, log, clock, Bukkit::getOnlinePlayers,
                 () -> usable && directory.storageAvailable());
-        this.listener = new ModerationListener(bans, messages, clock);
+        this.listener = new ModerationListener(bans, messages, clock, this::load);
     }
 
     public Listener listener() {
@@ -58,19 +63,39 @@ public final class ModerationModule {
      * run in order on that one thread, so the schema is migrated first. Until it ran, every login gets the "starting" screen.
      */
     public void load() {
-        io.execute(() -> {
-            if (directory.storageAvailable()) {
-                try {
-                    List<BanRecord> active = store.loadActiveBans(clock.getAsLong());
-                    bans.load(active);
-                    usable = true;
-                    log.info("Loaded " + active.size() + " active ban(s)");
-                } catch (StorageException | RuntimeException e) {
-                    log.log(Level.SEVERE, "Could not load the active bans: banned players can join until the next restart", e);
-                }
+        if (!loading.compareAndSet(false, true)) {
+            return;
+        }
+        try {
+            io.execute(this::loadNow);
+        } catch (RejectedExecutionException shutDown) {
+            loading.set(false);
+        }
+    }
+
+    /**
+     * Storage thread. Without a database there are no bans, so the login opens. If the database is up but the load fails,
+     * the login stays closed (fail-closed) and the next login attempt queues another try through {@link #load()}.
+     */
+    private void loadNow() {
+        try {
+            if (!directory.storageAvailable()) {
+                bans.markLoaded();
+                return;
             }
+            List<BanRecord> active = store.loadActiveBans(clock.getAsLong());
+            bans.load(active);
+            usable = true;
             bans.markLoaded();
-        });
+            log.info("Loaded " + active.size() + " active ban(s)");
+        } catch (StorageException | RuntimeException e) {
+            if (!loadFailureLogged) {
+                loadFailureLogged = true;
+                log.log(Level.SEVERE, "Could not load the active bans: logins stay closed and the load is retried on every login attempt", e);
+            }
+        } finally {
+            loading.set(false);
+        }
     }
 
     /** Registers the commands; a label another plugin owns is logged once and the rest keeps working. */

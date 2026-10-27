@@ -18,11 +18,18 @@ public final class ModerationListener implements Listener {
     private final BanList bans;
     private final Messages messages;
     private final LongSupplier clock;
+    private final Runnable retryLoad;
 
     public ModerationListener(BanList bans, Messages messages, LongSupplier clock) {
+        this(bans, messages, clock, () -> { });
+    }
+
+    /** {@code retryLoad} must only queue work (it runs on a login thread) and is called for every login while the bans are not loaded. */
+    public ModerationListener(BanList bans, Messages messages, LongSupplier clock, Runnable retryLoad) {
         this.bans = bans;
         this.messages = messages;
         this.clock = clock;
+        this.retryLoad = retryLoad;
     }
 
     /**
@@ -32,7 +39,10 @@ public final class ModerationListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onPreLogin(AsyncPlayerPreLoginEvent event) {
         if (!bans.loaded()) {
-            messages.denyStarting(event);
+            retryLoad.run();
+            if (event.getLoginResult() == AsyncPlayerPreLoginEvent.Result.ALLOWED) {
+                messages.denyStarting(event); // another plugin's refusal stays as it is
+            }
             return;
         }
         long now = clock.getAsLong();
