@@ -1,6 +1,6 @@
 # core-gamemode
 
-**Status:** review (branch verdict READY; waits for the in-game check)  <!-- planned | in progress | review | done -->
+**Status:** done (merged, PR #6; the in-game check is still open)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-27 · **Depends on:** `core-foundation`, `core-tidy` (both merged into `main`)
 
 ## Goal

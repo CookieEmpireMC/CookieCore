@@ -1,6 +1,6 @@
 # core-tidy
 
-**Status:** review (integration verdict READY; waits for the first Paper start)  <!-- planned | in progress | review | done -->
+**Status:** done (merged, PR #5; waits for the first Paper start)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-26 · **Depends on:** `core-foundation` (merged into `main` as PR #4)
 
 ## Goal

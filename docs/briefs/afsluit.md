@@ -1,39 +1,56 @@
-# Afsluit: stand van zaken (bijgewerkt 2026-10-27)
+# Afsluit: stand van zaken (bijgewerkt 2026-10-27, na de merge van PR #6 en #7)
 
 Overdracht voor de volgende sessie. Lees eerst dit bestand, daarna `docs/briefs/ROADMAP.md`.
 
 ## Waar staan we
-- **Fase 0 `core-foundation`:** gemerged in `main` (PR #4).
-- **Stap A `core-tidy`:** af, verdict **READY**, `mise run check` groen (137 tests, was 230). Branch `feature/core-tidy`, gepusht, PR als bot geopend (URL: zie laatste bericht van Rick of GitHub). Wacht op Luuks goedkeuring en merge. Brief: `docs/briefs/core-tidy.md`, review: `docs/reviews/2026-10-26-core-tidy.md`.
-- **B = fase 2 scoreboard** en **C = fase 3 gamemode:** nog niet gestart. Starten pas als `core-tidy` in `main` staat (gate "Depends on"). Fase 1 tab: Luuk heeft die niet aangewezen; vraag of tab overgeslagen blijft.
+`main` bevat alles tot en met fase 3. Alle PR's zijn door Luuk gemerged.
 
-## Follow-ups (LOW, geen fix-ronde)
-- L-1: `PluginSettings.intOrDefault`, tak voor `Number`: `3308.5` wordt stil `3308`, te grote `Long` wrapt.
-- L-2: `api/CookieCoreApi.java:9` Javadoc noemt nog `softdepend: [CookieCore]`.
-- L-3: lege `cookiecore-libraries.properties` geeft stil nul libraries (gooi in `libraries()`).
-- L-4 (onbevestigd): `Dependency(new DefaultArtifact(...), null)`, null-scope; eerste Paper-start moet dat laten zien.
-- Pakket `config` importeert `sound`, `storage`, `text` (geen cyclus; gedeelde regel zegt: geen feature-pakketten).
-- Uit fase 0: F-13, F-14, F-10/F-11 (INFO).
-Idee: één kleine "polish"-run (coder + tester) voor L-1 tot L-3 samen met het begin van fase 2.
+| Stap | PR | Inhoud |
+|---|---|---|
+| Fase 0 `core-foundation` | #4 | basis, opslag, `/cookiecore`, API |
+| Stap A `core-tidy` | #5 | opgelijnd met de CookieMemory-regels, `paper-plugin.yml`, schonere tests |
+| Fase 2 `core-scoreboard` | #7 | sidebar per speler, placeholder-API, `/scoreboard toggle`, opslag v2 |
+| Fase 3 `core-gamemode` | #6 | `/gamemode` `/gm` `/gms` `/gmc` `/gma` `/gmsp`, `/fly`, `/speed` |
 
-## Tooling en omgeving
-- `mise` werkt weer (2026.10.12; pad `%LOCALAPPDATA%\Microsoft\WinGet\Packages\jdx.mise_Microsoft.Winget.Source_8wekyb3d8bbwe\mise\bin\mise.exe` als het niet op PATH staat). Eerder was `mise.exe` tijdelijk geblokkeerd door Windows Application Control; zo ja, Maven direct draaien (JDK/Maven onder `%LOCALAPPDATA%\mise\installs`).
-- `mise run check` wordt door de GateGuard-hook als destructief gezien: eerst de feiten noemen (wijzigt alleen `target/`), dan opnieuw.
-- `ownership-check`: `.claude/hooks/ownership_lib.py` ontbreekt in deze repo. Draai `python tools\ownership\check.py <branch>` met `CLAUDE_PROJECT_DIR` naar een kopie met `hooks\ownership_lib.py` (uit `C:\dev\Cookie-Clicker\.claude\hooks\`) en de actuele `ownership.json`.
-- Agents: `SendMessage` naar een eerdere agent-id hervat hem met zijn context (werkte over sessies heen); Gandalf draait nu op haiku, de integratiereview mag `model: "sonnet"`.
-
-## PR's openen als bot
-- Eigen GitHub App `cookie-bakery-luuk` (App ID 5476628, Installation ID 175376554). Config: `~/.config/cookieclicker/github-app.env` en `github-app.pem` (alleen Luuk leest). Zie geheugen `github-app-pr-setup.md`.
-- `mise run pr-open` werkt op Windows niet (key-check eist mode 600, Windows meldt 666). Aanroep: `PATH` met `C:\Program Files\Git\usr\bin` vooraan (openssl), dan Python die `C:\dev\Cookie-Clicker\tools` op `sys.path` zet, `app.check_key_file = lambda p: p` zet en `open_pr.py` laadt met `importlib.util.spec_from_file_location`. Zet `tools\github_app` **niet** op `sys.path` (`token.py` verdekt de stdlib). Argumenten: `--head --base main --repo CookieEmpireMC/CookieCore --title --body-file`.
-- Luuk wil alleen controleren en de PR-URL krijgen; PR's van zijn eigen account kan hij niet zelf goedkeuren (main eist 1 review). Een PR sluiten vraagt Luuks expliciete toestemming (de permissiecontrole weigerde het anders).
-- **Windows-fix voor `pr-open`** moet nog gebouwd worden in een sessie in `C:\dev\Cookie-Clicker`: `/bakery-team:feature github-app-windows-key "pr-open: skip the unix mode-600 check on Windows (os.name == 'nt'); key is protected by its ACL. Add a test."`
+- `mise run check` op `main`: 183 tests, 0 mislukt, 1 bewust overgeslagen (scoreboard L-4).
+- Fase 1 (tab) is door Luuk overgeslagen.
+- **Volgende:** fase 4a `core-moderation-bans`, daarna 4b `core-moderation-mutes` (niet parallel: ze delen de database en de duurparser). Start pas na Luuks "go". Open vraag 4 uit de roadmap: permissies per commando (`cookiecore.staff.kick`, `.ban`, standaard op); neem dat aan tenzij Luuk anders zegt.
 
 ## Voor Luuk (niet door een agent te doen)
-- In-game test op een Paper 26.3-server (schone start, drivers laden, `/cookiecore version|reload`, `players` gevuld na een join, `last_seen` na stop met speler online). Sinds `core-tidy` is dit extra belangrijk (paper-plugin.yml en loader zijn nog niet door een echte server gehaald).
+- **In-game test op een Paper 26.3-server** (nog niets is door een echte server gehaald):
+  - schone start (paper-plugin.yml, loader, drivers), `/cookiecore version|reload`;
+  - **scoreboard:** toont `Score#customName` de tekst, zonder rode cijfers en zonder `l00`? Zo niet: Teams-fallback (alleen `BoardSink` wisselt, zie `docs/architecture.md`). Ook: geen flikkering, `/sb toggle` overleeft relog en herstart;
+  - **bestaande v1-database** start zonder fouten en houdt zijn spelers (kopieer eerst `plugins/CookieCore`);
+  - **gamemode:** de 22 stappen in `docs/reviews/2026-10-27-core-gamemode.md`, vooral `/fly` na `/gm a`, kick van een vliegende speler, `minecraft:gamemode` werkt nog.
 - `.claude/hooks/` uit CookieClicker kopiëren en registreren in `.claude/settings.json`.
-- Geluiden: pas als er paden voor de sound-designer in `ownership.json` komen, zijn eigen geluiden mogelijk; tot dan vanilla (D7).
+- Geluiden: pas eigen geluiden als er paden voor de sound-designer in `ownership.json` komen; tot dan vanilla (D7).
+
+## Beslissingen die Luuk heeft goedgekeurd (door te mergen)
+- Anderen van modus veranderen vraagt de modus-permissie én `cookiecore.gamemode.others`.
+- `/gamemode` neemt één speler (`@a` werkt niet meer); `/minecraft:gamemode` wordt niet door onze nodes beperkt.
+- `api/` mag precies `Player`, `Plugin` en `Component` tonen (voor het placeholder-contract).
+
+## Follow-ups (LOW, geen fix-ronde)
+- **Scoreboard:** L-4 (`scoreboard.yml` Online-regel laat `<gray>` open; eenregelige fix staat in de PR #7, daarna `@Disabled` weghalen in `ScoreboardLayoutTest`), L-2 (toggle in het laadvenster kan de keuze omdraaien), L-3 (placeholder met de naam van een MiniMessage-tag), L-5 (typefouten in `scoreboard.yml` niet gemeld), L-6, L-7, PERF-LOW-1 (alle regels opnieuw renderen bij één wijziging).
+- **Gamemode:** `FlyTracker` gebruikt het verouderde `Player#isOnGround()`; een foute modus of `/speed`-getal is een parse-fout zonder `ui_error`; registratie van `/fly` en `/speed` wordt niet gecontroleerd; commando-omschrijvingen zijn Engelse literals; `/fly`-intrekking wordt pas bij de volgende modus-wissel gezien; bij uitzetten in de lucht volgt valschade.
+- **Uit core-tidy:** `PluginSettings.intOrDefault` (`3308.5` wordt stil `3308`), Javadoc in `CookieCoreApi` noemt nog `softdepend`, lege `cookiecore-libraries.properties` geeft stil nul libraries, null-scope bij `Dependency` (onbevestigd tot de eerste Paper-start).
+- Idee: één kleine "polish"-run (coder + tester) voor bovenstaande LOW's vóór of na 4a.
+
+## Tooling en omgeving
+- `mise` werkt (pad `%LOCALAPPDATA%\Microsoft\WinGet\Packages\jdx.mise_Microsoft.Winget.Source_8wekyb3d8bbwe\mise\bin\mise.exe` als het niet op PATH staat). Eerder blokkeerde Windows Application Control `mise.exe` tijdelijk; zo ja, Maven direct draaien (JDK/Maven onder `%LOCALAPPDATA%\mise\installs`).
+- `mise run check` wordt door de GateGuard-hook als destructief gezien: eerst de feiten noemen (wijzigt alleen `target/`), dan opnieuw. Voor de eerste Bash/PowerShell-opdracht, de eerste Write/Edit per bestand en `git branch -D` geldt hetzelfde.
+- `ownership-check`: `.claude/hooks/ownership_lib.py` ontbreekt in deze repo. Draai `python tools\ownership\check.py <branch>` met `CLAUDE_PROJECT_DIR` naar een kopie met `hooks\ownership_lib.py` (uit `C:\dev\Cookie-Clicker\.claude\hooks\`) en de actuele `ownership.json`.
+- Agents: `SendMessage` naar een eerdere agent-id hervat hem met zijn context. Gandalf draait op haiku; de integratiereview mag `model: "sonnet"`. Een coder die vastloopt (stream watchdog) kan met `SendMessage` hervat worden.
+- Parallelle features: de tweede worktree krijgt een eigen branch (`git worktree add`), en agents krijgen expliciet de basis-branch. De gedeelde bestanden (`Perm`, `paper-plugin.yml`, `messages.yml`, `CookieCore`, `CookieCoreApi`) alleen toevoegend wijzigen; de tweede PR vraagt na de eerste merge toch een conflictoplossing. De ownership-hook weigert Rick `Edit` op testbestanden; een mergeconflict daarin los je op in de merge zelf (of laat Gandalf het doen).
+- gh is niet geïnstalleerd in de shell; CI-status ophalen kan niet met `gh`.
+
+## PR's openen als bot
+- Eigen GitHub App `cookie-bakery-luuk` (App ID 5476628, Installation ID 175376554), van de organisatie CookieEmpireMC. Config: `~/.config/cookieclicker/github-app.env` en `github-app.pem` (alleen Luuk leest; nooit lezen of tonen). Zie geheugen `github-app-pr-setup.md`.
+- `mise run pr-open` werkt op Windows niet (key-check eist mode 600, Windows meldt 666). Aanroep: `PATH` met `C:\Program Files\Git\usr\bin` vooraan (openssl), dan Python die `C:\dev\Cookie-Clicker\tools` op `sys.path` zet, `app.check_key_file = lambda p: p` zet en `open_pr.py` laadt met `importlib.util.spec_from_file_location`. Zet `tools\github_app` **niet** op `sys.path` (`token.py` verdekt de stdlib). Argumenten: `--head --base main --repo CookieEmpireMC/CookieCore --title --body-file`.
+- Luuk wil alleen controleren en de PR-URL krijgen; PR's van zijn eigen account kan hij niet zelf goedkeuren (main eist 1 review). Een PR sluiten vraagt Luuks expliciete toestemming. Alleen `feature/*` pushen, nooit force, nooit `gh pr create` met Luuks account.
+- **Windows-fix voor `pr-open`** moet nog gebouwd worden in een sessie in `C:\dev\Cookie-Clicker`: `/bakery-team:feature github-app-windows-key "pr-open: skip the unix mode-600 check on Windows (os.name == 'nt'); key is protected by its ACL. Add a test."`
 
 ## Eerste stappen volgende sessie
-1. `git status`, `git fetch`; staat PR van `core-tidy` al in `main`? Zo ja: `git switch main && git pull`, oude `feature/core-tidy` en `feature/core-foundation` lokaal verwijderen.
-2. Alleen als `core-tidy` gemerged is: B en C starten, parallel. Eerst gedeelde bedrading (`Perm`, `messages.yml`, `sounds.yml`, `paper-plugin.yml`, `CookieCore`) in één coder-run, merge, dan de twee fases elk met eigen coder en tester.
-3. Tijdsschatting: B 45 tot 60 min, C 25 tot 35 min, review en PR per fase 10 tot 15 min.
+1. `git status`, `git fetch`; staat de docs-PR (`feature/docs-afsluit`) al in `main`? Zo ja: `git switch main && git pull`, lokale `feature/docs-afsluit` verwijderen.
+2. Vraag Luuk naar de uitkomst van de in-game test (vooral het scoreboard); bij een rendering-probleem eerst de Teams-fallback.
+3. Bij Luuks "go": `/bakery-team:feature core-moderation-bans ...` (4a). Tijdschatting 2 tot 3 uur, zwaarder in tokens dan gamemode (database, auditlog, review en fixronde).

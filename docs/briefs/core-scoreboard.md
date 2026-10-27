@@ -1,6 +1,6 @@
 # core-scoreboard
 
-**Status:** review (branch verdict READY; waits for the in-game check)  <!-- planned | in progress | review | done -->
+**Status:** done (merged, PR #7; the in-game check is still open)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-27 · **Depends on:** `core-foundation`, `core-tidy` (both merged into `main`). Phase 1 (tab) is skipped by the user's choice; nothing here needs it.
 
 ## Goal
