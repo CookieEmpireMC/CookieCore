@@ -2,10 +2,16 @@ package dev.casperrs.cookieCore.moderation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.casperrs.cookieCore.Perm;
 import dev.casperrs.cookieCore.moderation.ModerationFixture.TestPlayer;
+import dev.casperrs.cookieCore.storage.BanRecord;
+import dev.casperrs.cookieCore.storage.PunishmentStore;
+import dev.casperrs.cookieCore.storage.StorageException;
+import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -97,5 +103,49 @@ class ModerationServiceTest {
                 carl.rec.plain().toString());
         assertEquals(1, carl.rec.sounds.size());
         assertFalse(alex.rec.plain().stream().anyMatch(m -> m.contains("[silent]")), "the sender is not alerted twice");
+    }
+
+    /** An Error on the storage thread still frees the target and tells the sender; the next command on the same player goes through. */
+    @Test
+    void anErrorOnTheStorageThreadFreesTheTargetAndTellsTheSender() throws Exception {
+        TestPlayer alex = f.player("Alex", Perm.STAFF_BAN);
+        TestPlayer steve = f.player("Steve");
+        ErrorOnce store = new ErrorOnce(f.store);
+        ModerationService service = f.service(store);
+
+        assertThrows(InternalError.class, () -> service.ban(alex.player, f.ref(steve), null, false, "griefing"));
+        assertTrue(alex.rec.lastPlain().contains("could not be saved"), alex.rec.lastPlain());
+        assertEquals(1, service.ban(alex.player, f.ref(steve), null, false, "griefing"));
+        assertEquals(1, f.count("core_punishments"));
+    }
+
+    /** Its first insert throws an Error, the way a broken storage thread would; everything else is the real store. */
+    private static final class ErrorOnce implements PunishmentStore {
+
+        private final PunishmentStore real;
+        private boolean failNext = true;
+
+        ErrorOnce(PunishmentStore real) {
+            this.real = real;
+        }
+
+        @Override
+        public long insert(dev.casperrs.cookieCore.storage.NewPunishment punishment) throws StorageException {
+            if (failNext) {
+                failNext = false;
+                throw new InternalError("simulated storage failure");
+            }
+            return real.insert(punishment);
+        }
+
+        @Override
+        public List<BanRecord> loadActiveBans(long now) throws StorageException {
+            return real.loadActiveBans(now);
+        }
+
+        @Override
+        public int deactivateBans(UUID target, UUID byUuid, String byName, String reason, long now) throws StorageException {
+            return real.deactivateBans(target, byUuid, byName, reason, now);
+        }
     }
 }

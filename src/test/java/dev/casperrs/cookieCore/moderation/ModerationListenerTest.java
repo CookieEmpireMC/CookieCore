@@ -6,11 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.casperrs.cookieCore.TestSupport;
 import dev.casperrs.cookieCore.storage.BanRecord;
 import dev.casperrs.cookieCore.text.Messages;
-import io.papermc.paper.connection.PlayerLoginConnection;
-import com.destroystokyo.paper.profile.PlayerProfile;
-import java.lang.reflect.Proxy;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.util.UUID;
 import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,22 +24,8 @@ class ModerationListenerTest {
         messages.load(TestSupport.resourceYaml("messages.yml"));
     }
 
-    /** The event with stand-ins for the profile and the connection: the shorter constructors ask the running server or are deprecated. */
     private AsyncPlayerPreLoginEvent login(UUID who) {
-        PlayerProfile profile = (PlayerProfile) Proxy.newProxyInstance(PlayerProfile.class.getClassLoader(),
-                new Class<?>[] {PlayerProfile.class},
-                (proxy, method, args) -> switch (method.getName()) {
-                    case "getId" -> who;
-                    case "getName" -> "Steve";
-                    default -> TestSupport.defaultValue(method.getReturnType());
-                });
-        PlayerLoginConnection connection = (PlayerLoginConnection) Proxy.newProxyInstance(PlayerLoginConnection.class.getClassLoader(),
-                new Class<?>[] {PlayerLoginConnection.class}, (proxy, method, args) -> TestSupport.defaultValue(method.getReturnType()));
-        InetAddress loopback = InetAddress.getLoopbackAddress();
-        AsyncPlayerPreLoginEvent event = new AsyncPlayerPreLoginEvent("Steve", loopback, new InetSocketAddress(loopback, 25565),
-                who, false, profile, "localhost", connection);
-        listener.onPreLogin(event);
-        return event;
+        return ModerationFixture.login(listener, who);
     }
 
     /** A permanent ban and a running tempban are refused with their screen; an expired tempban gets in. */

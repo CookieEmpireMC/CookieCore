@@ -16,7 +16,11 @@ import dev.casperrs.cookieCore.storage.StorageException;
 import dev.casperrs.cookieCore.text.Messages;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.argument.TestVanillaArgumentProvider;
+import com.destroystokyo.paper.profile.PlayerProfile;
+import io.papermc.paper.connection.PlayerLoginConnection;
 import java.lang.reflect.Method;
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -35,6 +39,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 
 /**
  * Real moderation services on an in-memory H2 database, with synchronous executors unless a test defers the storage
@@ -138,6 +143,24 @@ final class ModerationFixture {
                 return real.deactivateBans(target, byUuid, byName, reason, now);
             }
         };
+    }
+
+    /** Runs the pre-login handler for a player with {@code who}; stand-ins replace the profile and the connection (the shorter event constructors need the running server). */
+    static AsyncPlayerPreLoginEvent login(ModerationListener listener, UUID who) {
+        PlayerProfile profile = (PlayerProfile) Proxy.newProxyInstance(PlayerProfile.class.getClassLoader(),
+                new Class<?>[] {PlayerProfile.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "getId" -> who;
+                    case "getName" -> "Steve";
+                    default -> TestSupport.defaultValue(method.getReturnType());
+                });
+        PlayerLoginConnection connection = (PlayerLoginConnection) Proxy.newProxyInstance(PlayerLoginConnection.class.getClassLoader(),
+                new Class<?>[] {PlayerLoginConnection.class}, (proxy, method, args) -> TestSupport.defaultValue(method.getReturnType()));
+        InetAddress loopback = InetAddress.getLoopbackAddress();
+        AsyncPlayerPreLoginEvent event = new AsyncPlayerPreLoginEvent("Steve", loopback, new InetSocketAddress(loopback, 25565),
+                who, false, profile, "localhost", connection);
+        listener.onPreLogin(event);
+        return event;
     }
 
     static String plain(Component c) {
