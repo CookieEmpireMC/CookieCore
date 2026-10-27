@@ -13,6 +13,10 @@ Verified 2026-10-26 (replaces the 2026-10-21 notes where they changed).
 - Python string replace with `\n` inside a Python heredoc turns into real newlines: use the Edit tool for Java string literals containing `\n`.
 - `mise run ownership-check` fails in CookieCore (no `.claude/hooks/ownership_lib.py`). Manual run: copy CookieClicker's `.claude/hooks/ownership_lib.py` + CookieCore's `ownership.json` to a scratch dir and `CLAUDE_PROJECT_DIR=<dir> python tools/ownership/check.py <branch> --base <base>`.
 - Git on Windows warns "LF will be replaced by CRLF" on commit: harmless.
+- 2026-10-27: a single class run: `mise exec -- mvn -B -q test -Dtest=<Class> -Dsurefire.failIfNoSpecifiedTests=false` (the `-Dsurefire...` flag stops the other modules' empty test sets from failing). `mise run check` took 22 s, `mise run test` about the same.
+- Bash tool blocks foreground `sleep` ("use Monitor or run_in_background"): run long checks with `timeout` in the foreground instead, or `run_in_background`.
+- `mise run ownership-check <branch> --base <feature>` fails here (no `.claude/ownership.json` and no hook library in this checkout, same as F-02). Check by hand: `git diff --name-only <feature>..<branch>` must show only the owner's paths.
+
 - Verified 2026-10-27 (core-gamemode worktree):
   - `git -C C:\\dev\\...` fails in Git Bash ("cannot change to 'C:devCookieCore'"). Use `cd /c/dev/CookieCore/...` and absolute `/c/...` paths. The Read tool needs `C:/dev/...` absolute paths.
   - Worktree at `.claude/worktrees/core-gamemode-tester` (branch `core-gamemode/plugin-tester`): `mise run check` and `mise run test` both run there; `mise run test` is `mvn -B test`, `mise run check` is `mvn -B clean verify`. After a test-compile error, a stale `target/` is not the cause: check `tc.log` for the javac stack.

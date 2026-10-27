@@ -11,6 +11,7 @@ public final class Perm {
 
     public static final String ADMIN_VERSION = "cookiecore.admin.version";
     public static final String ADMIN_RELOAD = "cookiecore.admin.reload";
+    public static final String SCOREBOARD_TOGGLE = "cookiecore.scoreboard.toggle";
     public static final String GAMEMODE_SURVIVAL = "cookiecore.gamemode.survival";
     public static final String GAMEMODE_CREATIVE = "cookiecore.gamemode.creative";
     public static final String GAMEMODE_ADVENTURE = "cookiecore.gamemode.adventure";
@@ -22,7 +23,7 @@ public final class Perm {
     public static final String SPEED_OTHERS = "cookiecore.speed.others";
 
     /** Every node above; used by tests to keep {@code paper-plugin.yml} in sync. */
-    public static final List<String> ALL = List.of(ADMIN_VERSION, ADMIN_RELOAD,
+    public static final List<String> ALL = List.of(ADMIN_VERSION, ADMIN_RELOAD, SCOREBOARD_TOGGLE,
             GAMEMODE_SURVIVAL, GAMEMODE_CREATIVE, GAMEMODE_ADVENTURE, GAMEMODE_SPECTATOR, GAMEMODE_OTHERS,
             FLY, FLY_OTHERS, SPEED, SPEED_OTHERS);
 

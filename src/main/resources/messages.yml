@@ -16,6 +16,12 @@ command:
   storage-up: "<green>connected</green>"
   storage-down: "<red>memory only</red>"
 
+scoreboard:
+  shown: "<prefix><green>Sidebar shown.</green>"
+  hidden: "<prefix><gray>Sidebar hidden. Use <white>/scoreboard toggle</white> to bring it back.</gray>"
+  disabled: "<prefix><red>The sidebar is turned off on this server.</red>"
+  players-only: "<prefix><red>Only players have a sidebar.</red>"
+
 gamemode:
   usage: "<prefix><gray>Usage: <white>/gamemode (survival|creative|adventure|spectator) [player]</white> <dark_gray>(also 0-3, s, c, a, sp; or /gms /gmc /gma /gmsp)</dark_gray></gray>"
   mode:

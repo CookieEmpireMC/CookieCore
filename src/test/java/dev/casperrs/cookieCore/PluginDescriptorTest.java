@@ -96,7 +96,9 @@ class PluginDescriptorTest {
         for (String node : Perm.ALL) {
             Map<String, Object> spec = (Map<String, Object>) permissions().get(node);
             assertNotNull(spec.get("description"), node + " has no description");
-            assertEquals("op", spec.get("default"), node + " should default to op");
+            // the sidebar toggle is for every player by contract; the admin nodes stay op-only
+            Object expected = node.equals(Perm.SCOREBOARD_TOGGLE) ? Boolean.TRUE : "op";
+            assertEquals(expected, spec.get("default"), node + " default");
         }
     }
 

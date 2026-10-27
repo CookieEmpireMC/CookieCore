@@ -3,6 +3,7 @@ package dev.casperrs.cookieCore;
 import dev.casperrs.cookieCore.api.CookieCoreApi;
 import dev.casperrs.cookieCore.command.CommandKit;
 import dev.casperrs.cookieCore.command.CookieCoreCommand;
+import dev.casperrs.cookieCore.command.ScoreboardCommand;
 import dev.casperrs.cookieCore.config.ConfigLoader;
 import dev.casperrs.cookieCore.config.PluginSettings;
 import dev.casperrs.cookieCore.gamemode.FlyCommand;
@@ -11,6 +12,7 @@ import dev.casperrs.cookieCore.gamemode.GameModeCommand;
 import dev.casperrs.cookieCore.gamemode.SpeedCommand;
 import dev.casperrs.cookieCore.player.PlayerDirectory;
 import dev.casperrs.cookieCore.player.PlayerListener;
+import dev.casperrs.cookieCore.scoreboard.ScoreboardModule;
 import dev.casperrs.cookieCore.sound.SoundService;
 import dev.casperrs.cookieCore.storage.DriverConnectionFactory;
 import dev.casperrs.cookieCore.storage.JdbcPlayerStore;
@@ -20,6 +22,7 @@ import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,6 +60,7 @@ public final class CookieCore extends JavaPlugin {
     private ExecutorService io;
     private PlayerDirectory directory;
     private CoreService api;
+    private ScoreboardModule scoreboard;
 
     @Override
     public void onEnable() {
@@ -76,6 +80,12 @@ public final class CookieCore extends JavaPlugin {
         JdbcPlayerStore store = new JdbcPlayerStore(new DriverConnectionFactory(settings.database()),
                 settings.database().tablePrefix(), getLogger());
         getLogger().info("Using " + settings.database().describe());
+        scoreboard = new ScoreboardModule(this, store, io, this::runOnMainThread, this::repeatOnMainThread,
+                () -> settings.scoreboardEnabled(), () -> settings.serverName());
+        List<String> scoreboardProblems = new ArrayList<>();
+        scoreboard.loadConfig(scoreboardProblems);
+        scoreboardProblems.forEach(getLogger()::warning);
+        problems.addAll(scoreboardProblems);
 
         // 3. player directory (migrates the schema, loads the known players; never blocks the main thread)
         directory = new PlayerDirectory(store, io, this::runOnMainThread, getLogger(), System::currentTimeMillis);
@@ -84,6 +94,8 @@ public final class CookieCore extends JavaPlugin {
         // 4. listeners
         getServer().getPluginManager().registerEvents(new PlayerListener(directory), this);
         Bukkit.getOnlinePlayers().forEach(p -> directory.seen(p.getUniqueId(), p.getName())); // after a /reload
+        getServer().getPluginManager().registerEvents(scoreboard.listener(), this);
+        scoreboard.apply();
         FlyTracker flyTracker = new FlyTracker(this::runOnMainThread);
         getServer().getPluginManager().registerEvents(flyTracker, this);
 
@@ -91,19 +103,20 @@ public final class CookieCore extends JavaPlugin {
         CommandKit kit = new CommandKit(messages, sounds, directory);
         CookieCoreCommand command = new CookieCoreCommand(kit, messages, sounds,
                 () -> settings, getPluginMeta().getVersion(), directory::storageAvailable, this::reload);
-        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS,
-                event -> event.registrar().register(command.node(), "CookieCore admin commands"));
+        ScoreboardCommand sidebarCommand = new ScoreboardCommand(kit, sounds, scoreboard.service());
         GameModeCommand gameMode = new GameModeCommand(kit, messages, sounds);
         FlyCommand fly = new FlyCommand(kit, messages, sounds, flyTracker);
         SpeedCommand speed = new SpeedCommand(kit, messages, sounds);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
+            event.registrar().register(command.node(), "CookieCore admin commands");
+            event.registrar().register(sidebarCommand.node(), "Hide or show your sidebar", List.of("sb"));
             gameMode.register(event.registrar(), getLogger());
             event.registrar().register(fly.node(), "Toggle flight");
             event.registrar().register(speed.node(), "Change walking or flying speed");
         });
 
         // 6. public API
-        api = new CoreService(getPluginMeta().getVersion(), directory);
+        api = new CoreService(getPluginMeta().getVersion(), directory, scoreboard.placeholders());
         getServer().getServicesManager().register(CookieCoreApi.class, api, this, ServicePriority.Normal);
 
         getLogger().info("Enabled" + (problems.isEmpty() ? "" : " with " + problems.size() + " config problem(s), see above"));
@@ -112,6 +125,11 @@ public final class CookieCore extends JavaPlugin {
     @Override
     public void onDisable() {
         // a throw in any step must never skip the storage flush at the end
+        safely("the sidebar", () -> {
+            if (scoreboard != null) {
+                scoreboard.shutdown();
+            }
+        });
         safely("the public API", () -> {
             if (api != null) {
                 getServer().getServicesManager().unregister(CookieCoreApi.class, api);
@@ -144,6 +162,8 @@ public final class CookieCore extends JavaPlugin {
         settings = fresh.withDatabase(settings.database());
         loader.loadMessages(messages, problems);
         loader.loadSounds(sounds, problems);
+        scoreboard.loadConfig(problems);
+        scoreboard.apply();
         problems.forEach(getLogger()::warning);
         return problems;
     }
@@ -154,6 +174,11 @@ public final class CookieCore extends JavaPlugin {
             throw new RejectedExecutionException("CookieCore is disabled");
         }
         Bukkit.getScheduler().runTask(this, task);
+    }
+
+    private Runnable repeatOnMainThread(Runnable task, long periodTicks) {
+        BukkitTask handle = Bukkit.getScheduler().runTaskTimer(this, task, periodTicks, periodTicks);
+        return handle::cancel;
     }
 
     private void safely(String what, Runnable step) {

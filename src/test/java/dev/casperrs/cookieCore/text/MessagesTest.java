@@ -112,7 +112,7 @@ class MessagesTest {
 
     @Test
     void everyMessageKeyUsedInCodeExistsInMessagesYml() throws IOException {
-        Pattern literal = Pattern.compile("\"((?:command|gamemode|fly|speed)\\.[a-z0-9][a-z0-9.-]*)\"");
+        Pattern literal = Pattern.compile("\"((?:command|scoreboard|gamemode|fly|speed)\\.(?!yml\"|enabled\")[a-z0-9][a-z0-9.-]*)\"");
         YamlConfiguration jar = TestSupport.resourceYaml("messages.yml");
         Set<String> used = new HashSet<>();
         try (Stream<Path> files = Files.walk(Path.of("src/main/java"))) {
