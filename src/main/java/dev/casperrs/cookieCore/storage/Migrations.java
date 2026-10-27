@@ -25,7 +25,28 @@ public final class Migrations {
                 List.of(
                         "CREATE TABLE IF NOT EXISTS " + p + "sidebar_prefs ("
                                 + "uuid VARCHAR(36) NOT NULL PRIMARY KEY, "
-                                + "visible BOOLEAN NOT NULL)"));
+                                + "visible BOOLEAN NOT NULL)"),
+                // v2 -> v3 (core-moderation-bans): kicks and bans; one row per action, never deleted
+                List.of(
+                        "CREATE TABLE IF NOT EXISTS " + p + "punishments ("
+                                + "id BIGINT AUTO_INCREMENT NOT NULL, "
+                                + "type VARCHAR(16) NOT NULL, "
+                                + "target_uuid VARCHAR(36) NOT NULL, "
+                                + "target_name VARCHAR(" + JdbcPlayerStore.MAX_NAME_LENGTH + ") NOT NULL, "
+                                + "actor_uuid VARCHAR(36) NULL, "
+                                + "actor_name VARCHAR(" + JdbcPlayerStore.MAX_NAME_LENGTH + ") NOT NULL, "
+                                + "reason VARCHAR(" + JdbcPlayerStore.MAX_REASON_LENGTH + ") NOT NULL, "
+                                + "created_at BIGINT NOT NULL, "
+                                + "expires_at BIGINT NULL, "
+                                + "silent BOOLEAN NOT NULL, "
+                                + "active BOOLEAN NOT NULL, "
+                                + "removed_at BIGINT NULL, "
+                                + "removed_by_uuid VARCHAR(36) NULL, "
+                                + "removed_by_name VARCHAR(" + JdbcPlayerStore.MAX_NAME_LENGTH + ") NULL, "
+                                + "remove_reason VARCHAR(" + JdbcPlayerStore.MAX_REASON_LENGTH + ") NULL, "
+                                + "PRIMARY KEY (id))",
+                        // the index name is schema-wide in H2, so it carries the table prefix
+                        "CREATE INDEX IF NOT EXISTS " + p + "punishments_target ON " + p + "punishments (target_uuid, active)"));
     }
 
     /** The schema version this plugin version expects. */

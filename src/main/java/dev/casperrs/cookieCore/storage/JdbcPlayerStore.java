@@ -5,6 +5,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -16,12 +17,13 @@ import java.util.logging.Logger;
  * JDBC {@link PlayerStore} for H2 and MariaDB (plain SQL that both accept). Holds one connection and reopens it when it
  * goes stale. Single-threaded by contract. The schema is versioned by {@link SchemaMigrator} with {@link Migrations}.
  *
- * <p>Tables (prefix {@code core_} by default): {@code players(uuid, name, first_seen, last_seen)} and
- * {@code sidebar_prefs(uuid, visible)}.
+ * <p>Tables (prefix {@code core_} by default): {@code players(uuid, name, first_seen, last_seen)},
+ * {@code sidebar_prefs(uuid, visible)} and {@code punishments} (see {@link Migrations}).
  */
-public final class JdbcPlayerStore implements PlayerStore, SidebarStore {
+public final class JdbcPlayerStore implements PlayerStore, SidebarStore, PunishmentStore {
 
     static final int MAX_NAME_LENGTH = 32;
+    static final int MAX_REASON_LENGTH = 255;
 
     private final ConnectionFactory connections;
     private final String p;
@@ -172,6 +174,107 @@ public final class JdbcPlayerStore implements PlayerStore, SidebarStore {
             invalidate();
             throw new StorageException("Could not save the sidebar choice of " + uuid, e);
         }
+    }
+
+    @Override
+    public long insert(NewPunishment row) throws StorageException {
+        try {
+            Connection c = connection();
+            // the key is read by index: H2 and MariaDB name the generated column differently
+            try (PreparedStatement ps = c.prepareStatement("INSERT INTO " + p + "punishments (type, target_uuid, target_name, "
+                    + "actor_uuid, actor_name, reason, created_at, expires_at, silent, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    Statement.RETURN_GENERATED_KEYS)) {
+                ps.setString(1, row.type().name());
+                ps.setString(2, row.targetUuid().toString());
+                ps.setString(3, limit(row.targetName(), MAX_NAME_LENGTH));
+                if (row.actorUuid() == null) {
+                    ps.setNull(4, Types.VARCHAR);
+                } else {
+                    ps.setString(4, row.actorUuid().toString());
+                }
+                ps.setString(5, limit(row.actorName(), MAX_NAME_LENGTH));
+                ps.setString(6, limit(row.reason(), MAX_REASON_LENGTH));
+                ps.setLong(7, row.createdAt());
+                if (row.expiresAt() == null) {
+                    ps.setNull(8, Types.BIGINT);
+                } else {
+                    ps.setLong(8, row.expiresAt());
+                }
+                ps.setBoolean(9, row.silent());
+                ps.setBoolean(10, row.type().activeOnInsert());
+                ps.executeUpdate();
+                try (ResultSet keys = ps.getGeneratedKeys()) {
+                    if (!keys.next()) {
+                        throw new SQLException("the database returned no generated id");
+                    }
+                    return keys.getLong(1);
+                }
+            }
+        } catch (SQLException e) {
+            invalidate();
+            throw new StorageException("Could not record the " + row.type() + " of " + row.targetName(), e);
+        }
+    }
+
+    @Override
+    public List<BanRecord> loadActiveBans(long now) throws StorageException {
+        List<BanRecord> out = new ArrayList<>();
+        try {
+            Connection c = connection();
+            try (PreparedStatement st = c.prepareStatement("SELECT id, target_uuid, target_name, actor_name, reason, created_at, "
+                    + "expires_at FROM " + p + "punishments WHERE type = 'BAN' AND active = TRUE "
+                    + "AND (expires_at IS NULL OR expires_at > ?)")) {
+                st.setLong(1, now);
+                try (ResultSet rs = st.executeQuery()) {
+                    int skipped = 0;
+                    while (rs.next()) {
+                        try {
+                            long expires = rs.getLong(7);
+                            Long expiresAt = rs.wasNull() ? null : expires; // wasNull() refers to the last column read
+                            out.add(new BanRecord(rs.getLong(1), UUID.fromString(rs.getString(2)), rs.getString(3),
+                                    rs.getString(4), rs.getString(5), rs.getLong(6), expiresAt));
+                        } catch (IllegalArgumentException corrupt) {
+                            skipped++; // a damaged row must not lift every other ban
+                        }
+                    }
+                    if (skipped > 0) {
+                        log.warning("Skipped " + skipped + " row(s) in " + p + "punishments with an invalid uuid");
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            invalidate();
+            throw new StorageException("Could not load the active bans", e);
+        }
+        return out;
+    }
+
+    @Override
+    public int deactivateBans(UUID target, UUID byUuid, String byName, String reason, long now) throws StorageException {
+        try {
+            Connection c = connection();
+            try (PreparedStatement ps = c.prepareStatement("UPDATE " + p + "punishments SET active = FALSE, removed_at = ?, "
+                    + "removed_by_uuid = ?, removed_by_name = ?, remove_reason = ? "
+                    + "WHERE target_uuid = ? AND type = 'BAN' AND active = TRUE")) {
+                ps.setLong(1, now);
+                if (byUuid == null) {
+                    ps.setNull(2, Types.VARCHAR);
+                } else {
+                    ps.setString(2, byUuid.toString());
+                }
+                ps.setString(3, limit(byName, MAX_NAME_LENGTH));
+                ps.setString(4, limit(reason, MAX_REASON_LENGTH));
+                ps.setString(5, target.toString());
+                return ps.executeUpdate();
+            }
+        } catch (SQLException e) {
+            invalidate();
+            throw new StorageException("Could not remove the ban of " + target, e);
+        }
+    }
+
+    private static String limit(String text, int max) {
+        return text.length() > max ? text.substring(0, max) : text;
     }
 
     private static PlayerRecord record(ResultSet rs) throws SQLException {
