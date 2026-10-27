@@ -19,7 +19,17 @@
 - https://jd.advntr.dev/api/latest/net/kyori/adventure/text/TextReplacementConfig.Builder.html, .../text-minimessage/latest/.../tag/resolver/Placeholder.html | 4.26.1 signatures | 2026-10-26 | stable
 - https://docs.papermc.io/paper/dev/command-api/arguments/{enums,entity-player,minecraft}/ | gameMode arg, player resolve (no-match not documented) | 2026-10-26 | stable
 
+- https://jd.papermc.io/paper/26.3/org/bukkit/event/player/{AsyncPlayerPreLoginEvent,AsyncPlayerPreLoginEvent.Result,PlayerKickEvent,PlayerKickEvent.Cause}.html, .../io/papermc/paper/event/connection/PlayerConnectionValidateLoginEvent.html | pre-login async + methods; kick Cause list (KICK_COMMAND deprecated 26.2); validate-login thread undocumented | 2026-10-27 | stable
+- https://raw.githubusercontent.com/PaperMC/Paper/main/paper-server/patches/sources/net/minecraft/server/{network/ServerLoginPacketListenerImpl,network/ServerCommonPacketListenerImpl,players/PlayerList}.java.patch | pre-login on virtual "User Authenticator" threads; PlayerKickEvent flow (cancel = no kick); quit event after kick | 2026-10-27 | stable-ish
+- https://raw.githubusercontent.com/mojang/brigadier/master/src/main/java/com/mojang/brigadier/tree/{CommandNode,LiteralCommandNode}.java | literal child wins in getRelevantNodes; literal needs space/end after it | 2026-10-27 | stable
+- https://raw.githubusercontent.com/h2database/h2database/master/h2/src/main/org/h2/{engine/Mode,jdbc/JdbcConnection}.java | REGULAR mode autoIncrementClause=true; RETURN_GENERATED_KEYS flag | 2026-10-27 | stable
+- https://h2database.com/html/advanced.html (keywords list), https://mariadb.com/kb/en/reserved-words/, .../create-index/ | type/active/silent/reason unreserved on both; CREATE INDEX IF NOT EXISTS both | 2026-10-27 | stable
+- LuckPerms common/src/main/resources/me/lucko/luckperms/schema/{h2,mariadb}.sql | AUTO_INCREMENT + CREATE INDEX shape that runs on both | 2026-10-27 | stable
+
 ## Dead ends / tips
+- mariadb-connector-j raw Statement.java / ClientPreparedStatement.java paths 404 (any branch); only Jira tickets (CONJ-953/957) found for getGeneratedKeys. h2database.com/html/grammar.html lacks AUTO_INCREMENT (use Mode.java).
+- Paper *.java.patch files are 170k chars; the WebFetch summarizer reads only the first 100k per window, but targeted prompts on ServerCommonPacketListenerImpl/PlayerList/ServerLoginPacketListenerImpl patches worked.
+- Adventure MiniMessage Javadoc says nothing on thread safety.
 - docs.advntr.dev/minimessage/api.html redirects to docs.papermc.io/adventure/minimessage/api/. docs.papermc.io/paper/dev/commands and .../misc/comparison-bukkit-brigadier say nothing on overriding vanilla.
 - raw .../PlayerSelectorArgumentResolverImpl.java is 404.
 - javadoc.io pages for LuckPerms render only navigation: use raw.githubusercontent.com sources instead.
