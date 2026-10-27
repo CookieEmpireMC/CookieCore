@@ -5,7 +5,7 @@
 **Tester branch:** `core-moderation-bans/plugin-tester` (tests and this review)
 **Target:** Paper 26.3 (`paper-api 26.3.build.205-stable`), Java 25. `api-version` and `mise.toml` as in `docs/architecture.md`.
 
-**VERDICT: NOT READY** (one MEDIUM, M-1, goes back to the coder; everything else is LOW or in-game checks).
+**VERDICT (round 2): READY**, with one decision for Rick to confirm (section 9: a database that cannot be opened at boot still opens logins, as memory-only mode). Round 1 was NOT READY on M-1 only.
 
 ## 1. Target version
 Paper 26.3.build.205-stable. Every Bukkit/Paper call the feature uses was checked against the API jar (`javap`): `AsyncPlayerPreLoginEvent` constructors (the 2-, 3- and 4-argument ones reach `Bukkit.createProfile`, the 5- and 6-argument ones are `[removal]` in 26.3, so the tests use the 8-argument form with stand-ins), `disallow(Result, Component)`, `Player.kick(Component, PlayerKickEvent.Cause)`, `PlayerKickEvent.Cause.BANNED/KICKED`. No deprecated API used. No new dependency; nothing shaded.
@@ -115,3 +115,29 @@ Back up the data folder first (the v2 to v3 upgrade check needs a v2 copy).
 - `mise run check` on the tester branch: BUILD SUCCESS, 203 run, 0 failures, 1 skipped (pre-existing). The only compiler warning is the older `FlyTracker` deprecation from core-gamemode (L-1 there), not this feature.
 - `validate-assets`, `sound-check`, `balance-check`: not present in CookieCore (no assets, no balance). Not applicable.
 - Ownership: the coder branch touches only `src/main/**`, `messages.yml`, `paper-plugin.yml` and its own agent memory. No pom change, no `docs/` edit. `mise run ownership-check` cannot run in this checkout (see env notes); checked by hand with `git diff --name-only`.
+
+## 9. Round 2 (2026-10-27): fix for M-1 and LOW fixes, reviewed at HEAD
+Reviewed `git diff 2531cd6..HEAD -- src/main` (coder commits `d52a5a5`, `c451740`). Tests added in the tester branch: `ModerationModuleTest` (1: a failed load keeps logins closed, the next login queues the retry, the retry works and the banned player is then refused) and `ModerationServiceTest` (+1: an Error on the storage thread frees the target and tells the sender, the next command goes through). Suite: 205 run, 0 failed, 1 skipped; `mise run check` BUILD SUCCESS. The only warning is the older `FlyTracker` deprecation from core-gamemode.
+
+**M-1 (fail-closed load), resolved as decided by Rick:**
+- `ModerationModule.load()` queues at most one load: `AtomicBoolean loading` is set before `io.execute` and cleared in `loadNow`'s `finally`, and also when `io.execute` rejects. No path leaves the flag set while the task still runs. A task dropped by `shutdownNow` leaves it set, which is harmless at shutdown.
+- `loadNow` (storage thread): memory-only (`storageAvailable()` false) opens the login (`markLoaded`, as decided). A successful load merges the bans, sets `usable` (volatile) and then `loaded` (volatile): both are written after `bans.load`, so a login or command that reads them sees the bans. A failure (exception) leaves `loaded` false: logins get `moderation.starting` and the listener queues one retry.
+- `ModerationListener.onPreLogin` runs `retryLoad` (`load()`: an atomic flag and a queue offer, no JDBC, no Bukkit call) on the login thread, then refuses with the starting screen only when the event is still ALLOWED (L-5 done).
+- The SEVERE log is written once (`loadFailureLogged`, storage thread only); later retries are silent.
+- /kick: while the load has failed, `usable` is false, so `kickOut` takes the unrecorded path: the kick happens and logs once. Read, not run in game.
+- /ban, /tempban, /unban: `storageUp` is `usable && directory.storageAvailable()`, so they refuse with `storage-down`. Read, not run in game.
+
+**Background and busy (L-7 done):** `background` now catches `Throwable`; `finish` runs on the main thread in a `finally` that removes the busy entry, reports the failure, and rethrows an `Error` afterwards. `StorageThread` is a `newSingleThreadExecutor`, which replaces its worker after an uncaught Error, so rethrowing does not stop the storage thread (checked in `StorageThread.create`). Tested.
+
+**LOW fixes verified:** L-1 (the two unused keys removed from messages.yml, no code use left), L-2 (CommandKit Javadoc example now uses `moderation.banned`), L-5 (early return on a refusal from another plugin).
+
+**New LOW from round 2:**
+- R2-L1 `ModerationService.kickOut` during a failed load (database up): the kick is not recorded and the one-time warning says "The database is not available", which is misleading. Tell the admin the real reason, or record the kick when storage is up.
+- R2-L2 (PERF-LOW): during a database outage every refused login queues one load, and each attempt waits for a connect timeout on the single storage thread, delaying the queued player saves behind it. At most one attempt is in flight, so no flood; a small minimum interval between attempts (from the clock, no timer) would bound it.
+
+**Decision for Rick to confirm (residual, not a code defect against the decision):** the start-up path `storageAvailable() == false` opens logins. The architecture doc calls that memory-only mode, but it is also what a database that cannot be opened at boot produces. So a banned player can join during such a boot outage, and nothing in the log says so for the login side. Rick's decision covered only "database open but load throws". If "configured but unreachable at boot" should also be closed, that is a new MEDIUM for the coder (the same starting screen, the same retry).
+
+**Still open LOW (PR follow-ups, no fix round):** L-3 (kick audit row when the target leaves during the write), L-4 (sender gets the confirmation and the broadcast), L-6 (`text -> storage` edge, documented), L-8 (no `moderation.*` keys in `REQUIRED_KEYS`), L-9 (completion scan per keystroke), L-10 (expired entries in BanList), L-11 (JdbcPlayerStore split before 4b), L-12 (async SINGLE_SUCCESS), L-13 (expired tempban rows stay active), R2-L1, R2-L2.
+
+**Verdict round 2:** READY, conditional on Rick confirming the boot-outage decision above. Re-review scope next time: the coder's changes after `c451740`.
+
