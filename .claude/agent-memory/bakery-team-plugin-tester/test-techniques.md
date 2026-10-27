@@ -29,3 +29,11 @@ Verified 2026-10-26 in `src/test/java/dev/casperrs/cookieCore/` (stable while th
   - javac 25.0.4 crash: test-compile dies with "Cannot load from object array because this.hashes is null" when a test calls `new PlayerQuitEvent(player, Component)` (2-arg). The 3-arg `(player, Component, QuitReason.DISCONNECTED)` compiles. To find such a crash, move test files one group at a time to the scratchpad and `mvn test-compile`.
   - `PlayerGameModeChangeEvent(Player, GameMode)` is deprecated for removal in 26.3; use `(Player, GameMode, Cause.PLUGIN, null)`.
   - `TestSupport.noStore()` is the shared empty `PlayerStore` (moved from `CommandTreeTest`).
+
+Verified 2026-10-27 (core-moderation-bans), stable for 26.3.build.205:
+  - Moderation tests use `moderation/ModerationFixture`: real `ModerationService`/`BanList`/`JdbcPlayerStore` on H2 through a `DriverManager` lambda (the storage test helper `H2` is package-private, so do not import it from another package). Synchronous executors; `deferStorage = true` queues the IO tasks for busy-set tests. `TestPlayer` is a Player proxy with a kick log and an online flag.
+  - `ModerationService` answers `SINGLE_SUCCESS` before the database write finishes (asynchronous), so assert the outcome through messages, sounds, the ban list or the table, not the return value.
+  - Vanilla selector for `/kick`: put the Player in the public static `io.papermc.paper.command.brigadier.argument.TestVanillaArgumentProvider.ONLINE` map.
+  - Brigadier: `/x Steve -s` takes the `-s` literal over a greedy reason (the flag wins); `-sx`, `-S` and a trailing `-s` in a reason are text. Verified with the shipped Brigadier.
+  - `AsyncPlayerPreLoginEvent`: the 2-, 3- and 4-arg constructors reach `Bukkit.createProfile` (NPE without a server); the 5- and 6-arg are `[removal]` in 26.3 (javac warning in `mise run check`). Use the 8-arg `(name, address, SocketAddress, uuid, transferred, PlayerProfile, hostname, PlayerLoginConnection)` with Proxy stand-ins for the profile (`getId`, `getName`) and the connection (javac probe, 2026-10-27: no warning).
+  - Key scan in `MessagesTest` skips comment lines (Javadoc examples name keys too).
