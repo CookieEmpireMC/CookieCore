@@ -16,3 +16,9 @@ Verified 2026-10-26 (replaces the 2026-10-21 notes where they changed).
 - 2026-10-27: a single class run: `mise exec -- mvn -B -q test -Dtest=<Class> -Dsurefire.failIfNoSpecifiedTests=false` (the `-Dsurefire...` flag stops the other modules' empty test sets from failing). `mise run check` took 22 s, `mise run test` about the same.
 - Bash tool blocks foreground `sleep` ("use Monitor or run_in_background"): run long checks with `timeout` in the foreground instead, or `run_in_background`.
 - `mise run ownership-check <branch> --base <feature>` fails here (no `.claude/ownership.json` and no hook library in this checkout, same as F-02). Check by hand: `git diff --name-only <feature>..<branch>` must show only the owner's paths.
+
+- Verified 2026-10-27 (core-gamemode worktree):
+  - `git -C C:\\dev\\...` fails in Git Bash ("cannot change to 'C:devCookieCore'"). Use `cd /c/dev/CookieCore/...` and absolute `/c/...` paths. The Read tool needs `C:/dev/...` absolute paths.
+  - Worktree at `.claude/worktrees/core-gamemode-tester` (branch `core-gamemode/plugin-tester`): `mise run check` and `mise run test` both run there; `mise run test` is `mvn -B test`, `mise run check` is `mvn -B clean verify`. After a test-compile error, a stale `target/` is not the cause: check `tc.log` for the javac stack.
+  - mise path from Bash: `/c/Users/Luuk/AppData/Local/Microsoft/WinGet/Packages/jdx.mise_Microsoft.Winget.Source_8wekyb3d8bbwe/mise/bin/mise.exe`.
+  - The Fact-Forcing Gate denies any Bash command that contains `rm -rf`, even a no-op like `rm -rf $(echo)`. `mise run check` and `mise run test` were not gated in this run (they only write `target/`).

@@ -6,6 +6,10 @@ import dev.casperrs.cookieCore.command.CookieCoreCommand;
 import dev.casperrs.cookieCore.command.ScoreboardCommand;
 import dev.casperrs.cookieCore.config.ConfigLoader;
 import dev.casperrs.cookieCore.config.PluginSettings;
+import dev.casperrs.cookieCore.gamemode.FlyCommand;
+import dev.casperrs.cookieCore.gamemode.FlyTracker;
+import dev.casperrs.cookieCore.gamemode.GameModeCommand;
+import dev.casperrs.cookieCore.gamemode.SpeedCommand;
 import dev.casperrs.cookieCore.player.PlayerDirectory;
 import dev.casperrs.cookieCore.player.PlayerListener;
 import dev.casperrs.cookieCore.scoreboard.ScoreboardModule;
@@ -92,15 +96,23 @@ public final class CookieCore extends JavaPlugin {
         Bukkit.getOnlinePlayers().forEach(p -> directory.seen(p.getUniqueId(), p.getName())); // after a /reload
         getServer().getPluginManager().registerEvents(scoreboard.listener(), this);
         scoreboard.apply();
+        FlyTracker flyTracker = new FlyTracker(this::runOnMainThread);
+        getServer().getPluginManager().registerEvents(flyTracker, this);
 
         // 5. commands
         CommandKit kit = new CommandKit(messages, sounds, directory);
         CookieCoreCommand command = new CookieCoreCommand(kit, messages, sounds,
                 () -> settings, getPluginMeta().getVersion(), directory::storageAvailable, this::reload);
         ScoreboardCommand sidebarCommand = new ScoreboardCommand(kit, sounds, scoreboard.service());
+        GameModeCommand gameMode = new GameModeCommand(kit, messages, sounds);
+        FlyCommand fly = new FlyCommand(kit, messages, sounds, flyTracker);
+        SpeedCommand speed = new SpeedCommand(kit, messages, sounds);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
             event.registrar().register(command.node(), "CookieCore admin commands");
             event.registrar().register(sidebarCommand.node(), "Hide or show your sidebar", List.of("sb"));
+            gameMode.register(event.registrar(), getLogger());
+            event.registrar().register(fly.node(), "Toggle flight");
+            event.registrar().register(speed.node(), "Change walking or flying speed");
         });
 
         // 6. public API

@@ -10,16 +10,20 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
+import dev.casperrs.cookieCore.storage.PlayerRecord;
+import dev.casperrs.cookieCore.storage.PlayerStore;
 import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 
 /** Server-free stand-ins for the few Bukkit types the code under test touches (java.lang.reflect.Proxy). */
@@ -97,13 +101,46 @@ public final class TestSupport {
         return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[] {type}, handler);
     }
 
+    /** A PlayerDirectory store that holds nothing and never fails. */
+    public static PlayerStore noStore() {
+        return new PlayerStore() {
+            @Override
+            public void init() {
+            }
+
+            @Override
+            public void upsertSeen(UUID uuid, String name, long now) {
+            }
+
+            @Override
+            public List<PlayerRecord> loadAll() {
+                return List.of();
+            }
+
+            @Override
+            public Optional<PlayerRecord> findByName(String name) {
+                return Optional.empty();
+            }
+
+            @Override
+            public void close() {
+            }
+        };
+    }
+
     /** A command source whose sender is {@code sender}. */
     public static io.papermc.paper.command.brigadier.CommandSourceStack source(CommandSender sender) {
+        return source(sender, sender instanceof Entity entity ? entity : null);
+    }
+
+    /** A command source whose sender is {@code sender} and whose executor (what {@code /execute as} changes) is {@code executor}. */
+    public static io.papermc.paper.command.brigadier.CommandSourceStack source(CommandSender sender, Entity executor) {
         return (io.papermc.paper.command.brigadier.CommandSourceStack) Proxy.newProxyInstance(
                 TestSupport.class.getClassLoader(),
                 new Class<?>[] {io.papermc.paper.command.brigadier.CommandSourceStack.class},
                 (proxy, method, args) -> switch (method.getName()) {
-                    case "getSender", "getExecutor" -> sender;
+                    case "getSender" -> sender;
+                    case "getExecutor" -> executor;
                     case "hashCode" -> System.identityHashCode(proxy);
                     case "equals" -> proxy == args[0];
                     case "toString" -> "CommandSourceStackProxy";
@@ -111,7 +148,8 @@ public final class TestSupport {
                 });
     }
 
-    private static Object defaultValue(Class<?> type) {
+    /** The value a Java proxy must return for {@code type}: null for objects, zero or false for primitives. */
+    public static Object defaultValue(Class<?> type) {
         if (!type.isPrimitive() || type == void.class) {
             return null;
         }
