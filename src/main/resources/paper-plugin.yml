@@ -23,6 +23,9 @@ permissions:
   cookiecore.admin.reload:
     description: Use /cookiecore reload.
     default: op
+  cookiecore.scoreboard.toggle:
+    description: Use /scoreboard toggle to hide or show your sidebar.
+    default: true
   cookiecore.admin.*:
     description: Every CookieCore admin permission.
     default: op

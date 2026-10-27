@@ -15,3 +15,9 @@ command:
   version: "<prefix><gray>CookieCore <white><version></white> on <white><server></white> <dark_gray>(database: <database>, <storage>)</dark_gray></gray>"
   storage-up: "<green>connected</green>"
   storage-down: "<red>memory only</red>"
+
+scoreboard:
+  shown: "<prefix><green>Sidebar shown.</green>"
+  hidden: "<prefix><gray>Sidebar hidden. Use <white>/scoreboard toggle</white> to bring it back.</gray>"
+  disabled: "<prefix><red>The sidebar is turned off on this server.</red>"
+  players-only: "<prefix><red>Only players have a sidebar.</red>"

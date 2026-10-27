@@ -12,7 +12,16 @@
 - https://raw.githubusercontent.com/LuckPerms/LuckPerms/master/api/src/main/java/net/luckperms/api/... | LuckPermsProvider.get() throws IllegalStateException; UserManager getUser/loadUser; CachedMetaData getPrefix nullable; Group#getWeight OptionalInt | 2026-10-20 | stable
 - https://jd.advntr.dev/api/latest/net/kyori/adventure/audience/Audience.html | sendPlayerListHeaderAndFooter(Component, Component) (shows 4.26.1 docs) | 2026-10-20 | stable
 
+- https://raw.githubusercontent.com/PaperMC/Paper/main/{paper-api/src/main/java/org/bukkit/{entity/Player,entity/HumanEntity,GameMode,Bukkit}.java, paper-server/src/main/java/io/papermc/paper/command/brigadier/{PaperCommands,argument/VanillaArgumentProviderImpl}.java, paper-server/src/main/java/org/bukkit/craftbukkit/{entity/CraftPlayer,entity/CraftHumanEntity,scoreboard/CraftScoreboardManager,scoreboard/CraftScore}.java} | override semantics, fly/speed impl, scoreboard manager | 2026-10-26 | stable-ish (main branch)
+- .../paper-server/patches/sources/net/minecraft/server/level/{ServerPlayer,ServerPlayerGameMode}.java.patch | gamemode change event flow | 2026-10-26 | stable-ish
+- https://jd.papermc.io/paper/26.3/org/bukkit/scoreboard/{Score,Objective,Scoreboard,Team,ScoreboardManager}.html, .../event/player/PlayerGameModeChangeEvent(.Cause).html, .../scheduler/BukkitScheduler.html, .../argument/ArgumentTypes.html | signatures used in core-gamemode/scoreboard notes | 2026-10-26 | stable
+- https://minecraft.wiki/w/Scoreboard (sidebar 15 lines, # hidden), /w/Player.dat_format (abilities) | 2026-10-26 | stable
+- https://jd.advntr.dev/api/latest/net/kyori/adventure/text/TextReplacementConfig.Builder.html, .../text-minimessage/latest/.../tag/resolver/Placeholder.html | 4.26.1 signatures | 2026-10-26 | stable
+- https://docs.papermc.io/paper/dev/command-api/arguments/{enums,entity-player,minecraft}/ | gameMode arg, player resolve (no-match not documented) | 2026-10-26 | stable
+
 ## Dead ends / tips
+- docs.advntr.dev/minimessage/api.html redirects to docs.papermc.io/adventure/minimessage/api/. docs.papermc.io/paper/dev/commands and .../misc/comparison-bukkit-brigadier say nothing on overriding vanilla.
+- raw .../PlayerSelectorArgumentResolverImpl.java is 404.
 - javadoc.io pages for LuckPerms render only navigation: use raw.githubusercontent.com sources instead.
 - api.luckperms.net does not resolve; luckperms.net/wiki pages are mostly empty for the fetcher.
 - jd.papermc.io Player.html is 505k chars; setPlayerListOrder detail text not reachable via offsets 100000-500000 (direction higher/lower first still unknown).

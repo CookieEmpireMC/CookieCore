@@ -13,3 +13,6 @@ Verified 2026-10-26 (replaces the 2026-10-21 notes where they changed).
 - Python string replace with `\n` inside a Python heredoc turns into real newlines: use the Edit tool for Java string literals containing `\n`.
 - `mise run ownership-check` fails in CookieCore (no `.claude/hooks/ownership_lib.py`). Manual run: copy CookieClicker's `.claude/hooks/ownership_lib.py` + CookieCore's `ownership.json` to a scratch dir and `CLAUDE_PROJECT_DIR=<dir> python tools/ownership/check.py <branch> --base <base>`.
 - Git on Windows warns "LF will be replaced by CRLF" on commit: harmless.
+- 2026-10-27: a single class run: `mise exec -- mvn -B -q test -Dtest=<Class> -Dsurefire.failIfNoSpecifiedTests=false` (the `-Dsurefire...` flag stops the other modules' empty test sets from failing). `mise run check` took 22 s, `mise run test` about the same.
+- Bash tool blocks foreground `sleep` ("use Monitor or run_in_background"): run long checks with `timeout` in the foreground instead, or `run_in_background`.
+- `mise run ownership-check <branch> --base <feature>` fails here (no `.claude/ownership.json` and no hook library in this checkout, same as F-02). Check by hand: `git diff --name-only <feature>..<branch>` must show only the owner's paths.

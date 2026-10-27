@@ -10,14 +10,14 @@ import java.util.function.Consumer;
  * Everything in {@code config.yml}. Reloadable except {@code database}, which needs a restart.
  * Wrong values are reported to {@code problems} and replaced by the default, so the plugin always gets a usable object.
  */
-public record PluginSettings(String serverName, DatabaseSettings database) {
+public record PluginSettings(String serverName, DatabaseSettings database, boolean scoreboardEnabled) {
 
     static final String DEFAULT_SERVER_NAME = "Cookie Empire";
     static final String DEFAULT_PREFIX = "core_";
 
     /** Same settings with another database block (reload keeps the running database until a restart). */
     public PluginSettings withDatabase(DatabaseSettings db) {
-        return new PluginSettings(serverName, db);
+        return new PluginSettings(serverName, db, scoreboardEnabled);
     }
 
     public static PluginSettings from(ConfigurationSection c, Path dataFolder, Consumer<String> problems) {
@@ -52,7 +52,15 @@ public record PluginSettings(String serverName, DatabaseSettings database) {
                 c.getString("database.password", ""),
                 prefix);
 
-        return new PluginSettings(serverName, db);
+        boolean scoreboardEnabled = true;
+        Object rawScoreboard = c.get("scoreboard.enabled");
+        if (rawScoreboard instanceof Boolean b) {
+            scoreboardEnabled = b;
+        } else if (rawScoreboard != null) {
+            problems.accept("config.yml: scoreboard.enabled '" + rawScoreboard + "' is not true or false; using true");
+        }
+
+        return new PluginSettings(serverName, db, scoreboardEnabled);
     }
 
     /** {@code getInt} ignores a quoted number such as {@code '3308'}; this accepts it and reports anything that is not a whole number. */
