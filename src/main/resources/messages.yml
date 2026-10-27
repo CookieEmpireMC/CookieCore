@@ -69,3 +69,40 @@ speed:
   reset-self: "<prefix><green>Your <type> speed is back to normal.</green>"
   reset-other: "<prefix><green>The <type> speed of <white><player></white> is back to normal.</green>"
   reset-by: "<prefix><gray><white><staff></white> reset your <type> speed.</gray>"
+
+# Kicks, bans and unbans. Placeholders: <staff> (who did it), <player> (the target), <reason>, <duration> and <until>
+# (tempbans), <id> and <remaining> (ban screen). Reasons and names are inserted as plain text, never parsed.
+moderation:
+  console: "Console"
+  default-reason: "No reason given"
+  starting: "<red><bold>The server is starting up</bold></red><newline><newline><gray>Please try again in a moment.</gray>"
+  screen:
+    kick: "<red><bold>You were kicked</bold></red><newline><newline><gray>By: <white><staff></white></gray><newline><gray>Reason: <white><reason></white></gray>"
+    ban: "<red><bold>You are banned from this server</bold></red><newline><newline><gray>By: <white><staff></white></gray><newline><gray>Reason: <white><reason></white></gray><newline><newline><dark_gray>Ban ID: #<id></dark_gray>"
+    tempban: "<red><bold>You are temporarily banned from this server</bold></red><newline><newline><gray>By: <white><staff></white></gray><newline><gray>Reason: <white><reason></white></gray><newline><newline><gray>Time left: <white><remaining></white></gray><newline><gray>Ends: <white><until></white></gray><newline><newline><dark_gray>Ban ID: #<id></dark_gray>"
+  usage:
+    kick: "<prefix><gray>Usage: <white>/kick (player) [-s] [reason]</white> <dark_gray>(-s keeps it from the public; a reason cannot start with the bare word -s)</dark_gray></gray>"
+    ban: "<prefix><gray>Usage: <white>/ban (player) [-s] [reason]</white> <dark_gray>(-s keeps it from the public; a reason cannot start with the bare word -s)</dark_gray></gray>"
+    tempban: "<prefix><gray>Usage: <white>/tempban (player) (duration) [-s] [reason]</white> <dark_gray>(for example 7d12h; a reason cannot start with the bare word -s)</dark_gray></gray>"
+    unban: "<prefix><gray>Usage: <white>/unban (player) [-s] [reason]</white> <dark_gray>(also /pardon; a reason cannot start with the bare word -s)</dark_gray></gray>"
+  kicked: "<prefix><green>Kicked <white><player></white>: <reason></green>"
+  banned: "<prefix><green>Banned <white><player></white>: <reason></green>"
+  tempbanned: "<prefix><green>Banned <white><player></white> for <white><duration></white> (until <until>): <reason></green>"
+  unbanned: "<prefix><green>Unbanned <white><player></white>.</green>"
+  broadcast:
+    kick: "<prefix><white><player></white> <gray>was kicked by</gray> <white><staff></white><gray>: <reason></gray>"
+    ban: "<prefix><white><player></white> <gray>was banned by</gray> <white><staff></white><gray>: <reason></gray>"
+    tempban: "<prefix><white><player></white> <gray>was banned for <white><duration></white> by</gray> <white><staff></white><gray>: <reason></gray>"
+    unban: "<prefix><white><player></white> <gray>was unbanned by</gray> <white><staff></white><gray>.</gray>"
+  alert:
+    silent: "<dark_gray>[silent]</dark_gray> <message>"
+  error:
+    self: "<prefix><red>You cannot do that to yourself.</red>"
+    already-banned: "<prefix><red><white><player></white> is already banned permanently.</red>"
+    already-banned-until: "<prefix><red><white><player></white> is already banned until <white><until></white>.</red>"
+    not-banned: "<prefix><red><white><player></white> is not banned.</red>"
+    not-online: "<prefix><red>That player is not online.</red>"
+    reason-too-long: "<prefix><red>That reason is too long. Use at most <white><count></white> characters.</red>"
+    storage-down: "<prefix><red>The database is not available, so bans cannot be saved. Nothing was changed.</red>"
+    failed: "<prefix><red>The action could not be saved to the database, so nothing was changed. See the console.</red>"
+    busy: "<prefix><red>Another action on <white><player></white> is still being saved. Try again in a moment.</red>"

@@ -2,6 +2,7 @@ package dev.casperrs.cookieCore.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -160,5 +161,45 @@ class JdbcPlayerStoreTest {
         assertTrue(db.tableExists("core_sidebar_prefs"));
         assertEquals(List.of(a), store.loadAll().stream().map(PlayerRecord::uuid).toList());
         assertTrue(store.loadVisible(a));
+    }
+
+    /** Each kick, ban and tempban is one row with its generated id; kicks are stored inactive, so only bans load. */
+    @Test
+    void punishmentRowsGetGeneratedIdsKicksStayInactiveAndOnlyBansLoad() throws Exception {
+        store.init();
+        UUID staff = UUID.randomUUID();
+        UUID c = UUID.randomUUID();
+        long kick = store.insert(new NewPunishment(PunishmentType.KICK, a, "Alice", null, "Console", "spam", 100, null, true));
+        long ban = store.insert(new NewPunishment(PunishmentType.BAN, b, "Bob", staff, "Alex", "griefing", 200, null, false));
+        long tempban = store.insert(new NewPunishment(PunishmentType.BAN, c, "Carl", staff, "Alex", "spam", 300, 5_000L, false));
+        assertTrue(kick < ban && ban < tempban, "ids are generated in order");
+        List<BanRecord> active = store.loadActiveBans(1_000);
+        assertEquals(List.of(ban, tempban), active.stream().map(BanRecord::id).toList());
+        assertNull(active.getFirst().expiresAt());
+        assertEquals(Long.valueOf(5_000L), active.getLast().expiresAt());
+        assertEquals(2, db.count("core_punishments WHERE active = TRUE"), "the kick row is inactive");
+    }
+
+    /** An unban marks every active row of the player, including an expired tempban; other players are untouched. */
+    @Test
+    void unbanDeactivatesEveryActiveRowOfThePlayerAndRecordsWhoDidIt() throws Exception {
+        store.init();
+        store.insert(new NewPunishment(PunishmentType.BAN, a, "Alice", null, "Console", "old", 100, 500L, false));
+        store.insert(new NewPunishment(PunishmentType.BAN, a, "Alice", null, "Console", "perm", 200, null, false));
+        store.insert(new NewPunishment(PunishmentType.BAN, b, "Bob", null, "Console", "perm", 200, null, false));
+        assertEquals(2, store.deactivateBans(a, UUID.randomUUID(), "Alex", "appealed", 1_000));
+        assertEquals(List.of(b), store.loadActiveBans(1_000).stream().map(BanRecord::targetUuid).toList());
+        assertEquals(2, db.count("core_punishments WHERE removed_by_name = 'Alex' AND removed_at = 1000"));
+    }
+
+    /** A damaged punishment row is skipped with one warning; the other bans still load. */
+    @Test
+    void aCorruptPunishmentRowIsSkippedAndTheOthersLoad() throws Exception {
+        store.init();
+        store.insert(new NewPunishment(PunishmentType.BAN, b, "Bob", null, "Console", "ok", 1, null, false));
+        db.execute("INSERT INTO core_punishments (type, target_uuid, target_name, actor_uuid, actor_name, reason, created_at, "
+                + "expires_at, silent, active) VALUES ('BAN', 'not-a-uuid', 'Bad', NULL, 'Console', 'x', 1, NULL, FALSE, TRUE)");
+        assertEquals(List.of(b), store.loadActiveBans(0).stream().map(BanRecord::targetUuid).toList());
+        assertTrue(log.messages().stream().anyMatch(m -> m.contains("Skipped 1 row(s) in core_punishments")), log.messages().toString());
     }
 }

@@ -10,6 +10,7 @@ import dev.casperrs.cookieCore.gamemode.FlyCommand;
 import dev.casperrs.cookieCore.gamemode.FlyTracker;
 import dev.casperrs.cookieCore.gamemode.GameModeCommand;
 import dev.casperrs.cookieCore.gamemode.SpeedCommand;
+import dev.casperrs.cookieCore.moderation.ModerationModule;
 import dev.casperrs.cookieCore.player.PlayerDirectory;
 import dev.casperrs.cookieCore.player.PlayerListener;
 import dev.casperrs.cookieCore.scoreboard.ScoreboardModule;
@@ -39,7 +40,8 @@ import java.util.random.RandomGenerator;
  * <ol>
  *   <li>settings, messages, sounds ({@link ConfigLoader}; a broken file falls back to the jar's copy)</li>
  *   <li>storage: the single IO thread and the JDBC store</li>
- *   <li>{@link PlayerDirectory}: its {@code start()} migrates the schema and warms the cache on the IO thread</li>
+ *   <li>{@link PlayerDirectory}: its {@code start()} migrates the schema and warms the cache on the IO thread; then the
+ *       moderation module queues the load of the active bans behind it (logins are refused until it ran)</li>
  *   <li>listeners</li>
  *   <li>commands (Brigadier lifecycle registration)</li>
  *   <li>{@link CookieCoreApi} into the services manager, last, so other plugins never see a half-started Core</li>
@@ -61,6 +63,7 @@ public final class CookieCore extends JavaPlugin {
     private PlayerDirectory directory;
     private CoreService api;
     private ScoreboardModule scoreboard;
+    private ModerationModule moderation;
 
     @Override
     public void onEnable() {
@@ -90,8 +93,11 @@ public final class CookieCore extends JavaPlugin {
         // 3. player directory (migrates the schema, loads the known players; never blocks the main thread)
         directory = new PlayerDirectory(store, io, this::runOnMainThread, getLogger(), System::currentTimeMillis);
         directory.start();
+        moderation = new ModerationModule(getLogger(), store, io, this::runOnMainThread, messages, sounds, directory, System::currentTimeMillis);
+        moderation.load(); // queued behind the migration on the storage thread; logins wait for it
 
         // 4. listeners
+        getServer().getPluginManager().registerEvents(moderation.listener(), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(directory), this);
         Bukkit.getOnlinePlayers().forEach(p -> directory.seen(p.getUniqueId(), p.getName())); // after a /reload
         getServer().getPluginManager().registerEvents(scoreboard.listener(), this);
@@ -113,6 +119,7 @@ public final class CookieCore extends JavaPlugin {
             gameMode.register(event.registrar(), getLogger());
             event.registrar().register(fly.node(), "Toggle flight");
             event.registrar().register(speed.node(), "Change walking or flying speed");
+            moderation.register(event.registrar(), kit);
         });
 
         // 6. public API

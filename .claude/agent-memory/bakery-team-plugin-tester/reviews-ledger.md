@@ -4,6 +4,15 @@ description: Per reviewed area, the commit verified and what passed; re-review o
 metadata:
   type: project
 ---
+## CookieCore `core-moderation-bans` (2026-10-27), round 2 VERDICT READY (conditional on Rick's boot-outage decision)
+Round 2 reviewed `git diff 2531cd6..HEAD -- src/main` (coder `d52a5a5`, `c451740`): ModerationModule fail-closed load (one in flight, flag cleared in finally and on rejection, usable/loaded volatile order), ModerationListener retryLoad + L-5, ModerationService background/finish (busy in finally, Error rethrown), messages.yml key removal, CommandKit Javadoc. Tests +2 (`ModerationModuleTest`, Error case in `ModerationServiceTest`): 205 run, 0 failed. Open: `storageAvailable()==false` at boot still opens logins (residual of M-1, Rick to confirm); R2-L1 kick during failed load says 'database not available'; R2-L2 retry attempts serialise on the IO thread (PERF-LOW). Next re-review: `git diff <coder commit after c451740>..HEAD -- src/main`.
+
+## CookieCore `core-moderation-bans` (2026-10-27), VERDICT NOT READY (round 1)
+Review doc: `docs/reviews/2026-10-27-core-moderation-bans.md`. Coder branch `951091b` (DONE). Tester branch `core-moderation-bans/plugin-tester` holds 20 new tests (suite 203 run, 1 skipped, `mise run check` BUILD SUCCESS) and the architecture update.
+Areas read: `moderation/*` (ModerationService, BanList, ModerationListener, ModerationModule, the four commands, SilentReasonTail, BannedPlayerArgument, Actor), storage punishment methods + Migrations v3 + PunishmentStore/Type/NewPunishment/BanRecord, `text/Messages` (banScreen, deny*, thread safety), TimeText, CookieCore wiring, Perm, paper-plugin.yml, messages.yml moderation block.
+Open: M-1 MEDIUM (to coder): `ModerationModule.java:60-74` `markLoaded()` on every path, so logins are allowed when the database is down at boot or the load fails (brief says deny until loaded). LOW L-1..L-13 (dead keys messages.yml:105,110; CommandKit.java:35 Javadoc `moderation.muted`; double message for the sender; denyStarting overwrites an earlier refusal; text->storage edge; busy not freed on Error; JdbcPlayerStore split before 4b). MariaDB not run: checklist in the review section 6.
+Next re-review: `git diff 951091b..HEAD -- src/main` after the coder's M-1 fix; tests in full.
+
 ## CookieCore `core-scoreboard` (2026-10-27), round 2 VERDICT READY
 Round 2 (coder fix `1c85bb8`, merged `965e853`, tester branch `7a7ca6d`): M-1 resolved (ScoreboardConfig takes FileSource + jar supplier; ScoreboardConfigTest 3), L-1 resolved (close() in refresh catch). Open LOW: L-4 one line in scoreboard.yml (outer gray still open; strict test @Disabled until fixed). Suite 160 run, 0 failures, 1 skipped. Re-review scope next time: `git diff 7a7ca6d..HEAD -- src/main` (L-4 line, L-2/L-3/L-5 if fixed).
 

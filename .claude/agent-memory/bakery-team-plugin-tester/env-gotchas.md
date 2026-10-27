@@ -22,3 +22,6 @@ Verified 2026-10-26 (replaces the 2026-10-21 notes where they changed).
   - Worktree at `.claude/worktrees/core-gamemode-tester` (branch `core-gamemode/plugin-tester`): `mise run check` and `mise run test` both run there; `mise run test` is `mvn -B test`, `mise run check` is `mvn -B clean verify`. After a test-compile error, a stale `target/` is not the cause: check `tc.log` for the javac stack.
   - mise path from Bash: `/c/Users/Luuk/AppData/Local/Microsoft/WinGet/Packages/jdx.mise_Microsoft.Winget.Source_8wekyb3d8bbwe/mise/bin/mise.exe`.
   - The Fact-Forcing Gate denies any Bash command that contains `rm -rf`, even a no-op like `rm -rf $(echo)`. `mise run check` and `mise run test` were not gated in this run (they only write `target/`).
+- 2026-10-27 (moderation): `mise exec -- mvn -B -q test -Dtest=<Class> -Dsurefire.failIfNoSpecifiedTests=false` prints only errors; exit 0 means pass. Look for `[removal]` / deprecation warnings in the log with `grep WARNING`, since `-q` hides them and `mise run check` shows them.
+- 2026-10-27: a Python heredoc turns `
+` in a Java string into a real newline and breaks the file (happened again in MessagesTest). Fix it with the Edit tool.

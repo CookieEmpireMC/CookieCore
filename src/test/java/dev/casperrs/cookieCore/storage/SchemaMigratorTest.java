@@ -60,4 +60,17 @@ class SchemaMigratorTest {
             }
         }
     }
+
+    /** A version 2 database (players and sidebar choices) upgrades in place: its rows stay and the punishments table appears. */
+    @Test
+    void aVersionTwoDatabaseUpgradesInPlaceAndKeepsItsPlayers() throws Exception {
+        List<List<String>> all = Migrations.all("core_");
+        try (Connection c = db.raw()) {
+            assertEquals(2, SchemaMigrator.migrate(c, "core_", all.subList(0, 2)));
+            db.execute("INSERT INTO core_players (uuid, name, first_seen, last_seen) VALUES ('00000000-0000-0000-0000-00000000000a', 'Alice', 1, 2)");
+            assertEquals(Migrations.currentVersion(), SchemaMigrator.migrate(c, "core_", all));
+        }
+        assertEquals(1, db.count("core_players"), "data kept");
+        assertEquals(0, db.count("core_punishments"), "the new table starts empty");
+    }
 }
