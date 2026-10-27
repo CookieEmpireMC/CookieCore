@@ -1,6 +1,6 @@
 # core-moderation-bans
 
-**Status:** in progress  <!-- planned | in progress | review | done -->
+**Status:** review (branch verdict READY; waits for the in-game check)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-27 · **Depends on:** `core-foundation`, `core-tidy`, `core-scoreboard`, `core-gamemode` (all merged into `main`). Phase 4a of `docs/briefs/ROADMAP.md`; phase 4b (`core-moderation-mutes`) builds on the table and helpers introduced here.
 
 ## Goal
@@ -94,9 +94,11 @@ One coder run: about 14 to 18 files, one shared table and one login listener, so
 ## Status
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
-| resource-pack-researcher | planned | feature branch | n/a | |
-| plugin-coder | planned | `core-moderation-bans/plugin-coder` | | |
-| plugin-tester | planned | `core-moderation-bans/plugin-tester` | | |
+| resource-pack-researcher | done | feature branch | n/a | `docs/research/core-moderation-bans-apis.md` committed |
+| plugin-coder | done (merged, one fix round) | `core-moderation-bans/plugin-coder` | READY | punishments table (migration v3), ban index, login check, four commands; M-1 fixed |
+| plugin-tester | done (merged) | `core-moderation-bans/plugin-tester` | READY | 205 tests (1 skipped on purpose); `docs/reviews/2026-10-27-core-moderation-bans.md`; LOW follow-ups |
+
+Decisions during the build (orchestrator, the user can overrule): (1) the start-up ban load is fail-closed when the database is open but the load throws (starting screen, retry on the next login, no timer); (2) when the database cannot be opened at boot (memory-only mode) logins stay open, because locking everyone out on a database hiccup costs more than a banned player joining during the outage; (3) the extra keys `moderation.console`, `moderation.usage.*`, `moderation.error.already-banned-until|not-online|busy` exist, and the helper methods are `denyBanned`, `denyStarting`, `disconnect` (the architecture rule bans `.kick(` outside `text/`).
 
 ## Merge order
 1. research note (direct on the feature branch)
