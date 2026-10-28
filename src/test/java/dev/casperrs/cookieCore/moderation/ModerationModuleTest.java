@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.casperrs.cookieCore.storage.BanRecord;
+import dev.casperrs.cookieCore.storage.MuteRecord;
 import dev.casperrs.cookieCore.storage.NewPunishment;
 import dev.casperrs.cookieCore.storage.PunishmentStore;
 import dev.casperrs.cookieCore.storage.PunishmentType;
@@ -41,6 +42,50 @@ class ModerationModuleTest {
 
         assertEquals(AsyncPlayerPreLoginEvent.Result.ALLOWED, ModerationFixture.login(listener, UUID.randomUUID()).getLoginResult());
         assertEquals(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, ModerationFixture.login(listener, steve).getLoginResult());
+    }
+
+    /** A failed mute load leaves the bans in force; the mute commands refuse (ModerationServiceTest). */
+    @Test
+    void aFailedMuteLoadKeepsTheBansWorking() throws Exception {
+        UUID steve = UUID.randomUUID();
+        f.store.insert(new NewPunishment(PunishmentType.BAN, steve, "Steve", null, "Console", "griefing", f.now, null, false));
+        ModerationModule module = new ModerationModule(f.log.logger, new MuteLoadFails(f.store), Runnable::run, Runnable::run,
+                f.messages, f.sounds, f.directory, () -> f.now);
+        module.load();
+        ModerationListener listener = (ModerationListener) module.listener();
+
+        assertEquals(AsyncPlayerPreLoginEvent.Result.KICK_BANNED, ModerationFixture.login(listener, steve).getLoginResult());
+        assertEquals(AsyncPlayerPreLoginEvent.Result.ALLOWED, ModerationFixture.login(listener, UUID.randomUUID()).getLoginResult());
+    }
+
+    /** A store whose mute read fails, like a database that drops out during start-up. */
+    private static final class MuteLoadFails implements PunishmentStore {
+
+        private final PunishmentStore real;
+
+        MuteLoadFails(PunishmentStore real) {
+            this.real = real;
+        }
+
+        @Override
+        public long insert(NewPunishment punishment) throws StorageException {
+            return real.insert(punishment);
+        }
+
+        @Override
+        public List<BanRecord> loadActiveBans(long now) throws StorageException {
+            return real.loadActiveBans(now);
+        }
+
+        @Override
+        public List<MuteRecord> loadActiveMutes(long now) throws StorageException {
+            throw new StorageException("database lost");
+        }
+
+        @Override
+        public int deactivateBans(UUID target, UUID byUuid, String byName, String reason, long now) throws StorageException {
+            return real.deactivateBans(target, byUuid, byName, reason, now);
+        }
     }
 
     /** A store whose first ban load fails, like a database that cannot be reached yet. */
