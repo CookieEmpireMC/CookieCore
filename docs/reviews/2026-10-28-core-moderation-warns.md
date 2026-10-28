@@ -2,7 +2,7 @@
 
 Reviewer: Gandalf (plugin-tester). Branch `core-moderation-warns/plugin-tester` (coder tip `e0d2def`, tester commits `127d9a8`, `2a573b9`, `f4e9f35`). Brief: `docs/briefs/core-moderation-warns.md`.
 
-**VERDICT: NOT READY** (one MEDIUM bug, fix round for the coder; see M-1).
+**VERDICT: READY** (round 2, after the round 1 NOT READY for M-1; see sections 3 and 8).
 
 ## 1. Target version
 Paper 26.3 (`26.3.build.205-stable`), Java 25, `api-version: '26.3'`, `mise.toml` pins temurin-25. No version mismatch found. No MiniMessage or Adventure 4 API in the diff. `PlayerCommandPreprocessEvent` (whisper block) is not deprecated in 26.3 (no `[removal]` or deprecation warning from it in `mise run check`; the only warning in the build is the existing `FlyTracker.isOnGround()`, tracked in the gamemode review).
@@ -60,5 +60,17 @@ Run as an op with the staff nodes (`cookiecore.staff.warn`, `cookiecore.staff.hi
 - **Good:** the warn and history commands answer in one or two ticks; no lag while the database answers (it runs on the IO thread); chat and whisper checks cost nothing measurable.
 - **spark:** `/spark profiler start --timeout 60` while running `/history` in a loop; the plugin's share of the tick should be negligible (no `CookieCore-Storage` on the main thread).
 
+## 8. Round 2 (fix commit `28ba96c`, tests `88f0190`)
+Scope: the diff of `28ba96c` only (`src/main`: `ModerationModule.loadMutes`, `MuteList`, `ModerationService.mute`/`unmute`, `PunishmentHistory.read`, `messages.yml`).
+- **M-1 fixed, option (b) (decided by the orchestrator):** `MuteList.markLoadFailed()` is set in the `loadMutes` catch; `mute`, `tempmute` (through `service.mute`) and `unmute` refuse with `storage-down` while `loadFailed()`. The flag is separate from `loaded()` and is set only on the failure, so the start-up window (not yet loaded, no failure) still allows `/mute` as the brief says. `usable` and bans are unchanged. Verified in code. Chat and whispers stay open after a failed load (fail-open, as the brief says). Message text now says "bans and mutes cannot be saved".
+- **Regression tests:** `ModerationServiceTest.muteAndUnmuteRefuseWhileTheMuteLoadFailed` (mute and unmute write nothing, the sender is told; without the guard this would insert a row, so it bites); `MuteListTest.aFailedLoadIsRememberedAndTheListIsNotLoaded`; `ModerationModuleTest.aFailedMuteLoadKeepsTheBansWorking` (a store whose mute read throws: a banned player is still refused, a new one allowed). Limit: the module keeps its `ModerationService` private, so the mute refusal through the module itself is covered by the service test and by reading the `loadMutes` wiring, not by a module-level mute command test.
+- **LOW-1 (history offset) fixed:** `(int) Math.min((page - 1L) * PAGE_SIZE, Integer.MAX_VALUE)`, correct for every `int` page. `PunishmentHistoryTest.aHugePageNumberShowsTheEmptyHistoryInsteadOfAnError` (page `Integer.MAX_VALUE` shows the empty-history message, not the failed message).
+- **LOW-3 tests written:** `ModerationServiceTest`: warn write before the target hears (queued write, nothing told until it lands), failed write (sender told, target hears nothing), self refused with no write, silent warn reaches the target and not a bystander.
+- **Still open (LOW-4, coder):** `loadActiveMutes`, `deactivateMutes` and `history` are still default methods in `PunishmentStore`. Not in this round.
+- **LOW-2 (whisper aliases of other plugins)** and **PERF-LOW (history index)** stay as follow-ups.
+- No new findings in the round-2 diff. No PERF-HIGH or PERF-MEDIUM.
+
+`mise run check` at `88f0190`: BUILD SUCCESS, 224 tests, 0 failures, 0 errors, 1 skipped (the same skip as before).
+
 ## Verdict
-NOT READY. Fix M-1 (coder), then re-review only the changed paths. L-1 to L-3 and LOW-4 go to the PR follow-ups (LOW-4 is still a coder change, the tester updates the fakes with it).
+**Round 1: NOT READY (M-1). Round 2: READY** for `core-moderation-warns` (tests `88f0190` on `core-moderation-warns/plugin-tester`, product code `28ba96c` on the coder branch). Follow-ups for the PR: LOW-4 (coder: abstract the three PunishmentStore defaults; the test fakes then implement them), LOW-2 (other plugins' whisper aliases), PERF-LOW (history index), the in-game check list in section 7.
