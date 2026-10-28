@@ -16,13 +16,12 @@ Verified 2026-10-26 in `src/test/java/dev/casperrs/cookieCore/` (stable while th
 - Timing a hot path: write a throwaway test under src/test, print with System.out, run with `-q`, delete it, never commit it.
 - Perf harness for PlayerDirectory (throwaway `TmpPerfTest`, in-memory PlayerStore returning N PlayerRecords, `Runnable::run` executors, 2000-call JIT warm-up, then average 200 calls): N=500k `namesStartingWith` about 0.005-0.008 ms. Delete afterwards.
 - `ConfigurationSection#getInt(path, def)` returns `def` for a YAML string even if it holds a number (`port: '3308'`), so parse the value yourself. `PluginSettings.intOrDefault` now does; unquoted `3308.5` still truncates (follow-up L-1).
-- Bash tool: heredocs with backticks/apostrophes in markdown or Java text break ("unexpected EOF"); write the text with the Write tool.
 - `Plugin` is an interface: a `Proxy` answering `getName` (identity equality via `proxy == args[0]`) is enough for `PlaceholderRegistry` tests (2026-10-27).
 - Classes that take a `JavaPlugin` (`ScoreboardConfig`, `ConfigLoader`) cannot be tested: data folder, `getResource`, `saveResource` need the server. Ask the coder for a supplier seam instead (M-1 in the core-scoreboard review, 2026-10-27).
 - `Sidebar`, `SidebarService`, `SidebarPreferences` need Bukkit's scoreboard manager or the scheduler; no unit test without MockBukkit (not in the pom). Review them by reading, list the in-game checks.
 - Hot-path timing without JMH (2026-10-27, throwaway test, deleted): `Template.render` for 16 templates with 5 keys each takes about 0.10 ms warm, 0.23 ms cold, on the dev machine. Enough to size a per-second cost (PERF-LOW-1 core-scoreboard).
 
-- Verified 2026-10-27 (core-gamemode), stable for 26.3.build.205:
+Verified 2026-10-27 (core-gamemode), stable for 26.3.build.205:
   - `gamemode/FakePlayer`: a `Player` proxy with mode, allowFlight, flying and speed state. `setGameMode` fires `PlayerGameModeChangeEvent` through a hook first, then drops flight in survival and adventure like the server. Use it for tracker tests (`FlyTrackerTest`) and command tests.
   - `ArgumentTypes.player()` needs the server. The stand-in `io.papermc.paper.command.brigadier.argument.TestVanillaArgumentProvider` (test sources, Paper's package because `VanillaArgumentProvider` is package-private) is named in `src/test/resources/META-INF/services/io.papermc.paper.command.brigadier.argument.VanillaArgumentProvider`. It must be a real subtype: `findFirst()` fails with "not a subtype" otherwise, and a static `provider()` factory is not enough. It implements all 37 methods, returning null except `player()`/`players()` (a `PlayerSelectorArgumentResolver` proxy that resolves names from a static map).
   - `CommandSourceStack#getExecutor()` returns `org.bukkit.entity.Entity`, not `CommandSender`: `TestSupport.source(sender, executor)` takes an Entity; the console gets null.
@@ -42,3 +41,15 @@ Verified 2026-10-27 (core-moderation-bans), stable for 26.3.build.205:
 Verified 2026-10-28 (core-moderation-warns), stable for 26.3.build.205:
   - `PlayerCommandPreprocessEvent(Player, String)` (2-arg) reads the server's online players, so a Proxy player NPEs there. Use the 3-arg `(Player, String, Set<Player>)` with `new HashSet<>()`. `isCancelled()` works on the event.
   - `PunishmentHistory` status/type mapping is private static behind `show()`, which needs `Messages` and a `SoundService`; not unit tested yet.
+
+Verified 2026-10-28 (core-chat-join, tester branch), stable for 26.3.build.205:
+  - `chat/ChatFixture.FakePlayer`: a Player proxy with name, UUID, permissions, `playedBefore`, and recorded `rec.messages`, `titles` and `rec.sounds`. Use it for chat tests; `TestSupport.player` always reports the name "tester".
+  - `TestSupport.Recorder.plain()` returns whole lines, including the messages.yml prefix. Assert with `lastPlain().endsWith(...)` or `contains`, never `contains` on the list.
+  - `new PlayerJoinEvent(player, Component)` and `new PlayerQuitEvent(player, Component, QuitReason.DISCONNECTED)` compile and run without a server (the 2-arg quit ctor is the javac crash above).
+  - `CommandKit.onlinePlayer` resolves names through `TestVanillaArgumentProvider.ONLINE` (clear it in `@BeforeEach`). An unknown name lands in the chat code's catch, so the line is `chat.not-online`.
+  - `ChatConfig` takes a `FileSource` lambda and a jar supplier, so its broken-file rules are testable without a server. `YamlFiles.BadYamlException` message is "<file> is not valid YAML: <cause message>".
+  - `MuteExpiryNotifier.tick()` is package-private: test in the `chat` package with a fake `Repeater` that keeps the task and returns a counting cancel.
+  - Strict MiniMessage (`MiniMessage.builder().strict(true).build()`) accepts every shipped chat.yml text (unknown placeholder tags are not an error there).
+  - Round 2 (2026-10-28): `new AsyncChatEvent(true, player, new HashSet<Audience>(), ChatRenderer.defaultRenderer(), msg, msg, signedProxy)` works without a server (a SignedMessage Proxy returning defaults). Run `mute.onChat(e)`, then `chat.onChat(e)` only when `!e.isCancelled()` (the server skips ignoreCancelled listeners). `e.renderer().render(player, name, msg, viewer)` gives the public line.
+  - `ChatModule` cannot be built in tests (JavaPlugin). Test a production predicate only through a package-private static seam; otherwise the test mirrors the expression (ChatListenerTest, a49eeb4 review).
+  - Reflection guard for a field read from another thread: `Class.forName(name, false, loader).getDeclaredField(x)` + `Modifier.isVolatile` (ArchitectureRulesTest, 2026-10-28).

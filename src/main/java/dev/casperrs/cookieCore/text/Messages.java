@@ -6,6 +6,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import net.kyori.adventure.title.Title;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
@@ -96,6 +97,11 @@ public final class Messages {
         return yaml.isString(path);
     }
 
+    /** True when the text at {@code path} is missing or empty: that is how an admin switches an optional message off. */
+    public boolean isBlank(String path) {
+        return yaml.getString(path, "").isBlank();
+    }
+
     /** The message at {@code path} with {@code <prefix>} and the given placeholders filled in. */
     public Component component(String path, TagResolver... resolvers) {
         return MM.deserialize(raw(path), TagResolver.resolver(prefix(), TagResolver.resolver(resolvers)));
@@ -103,6 +109,25 @@ public final class Messages {
 
     public void send(Audience to, String path, TagResolver... resolvers) {
         to.sendMessage(component(path, resolvers));
+    }
+
+    /** Sends a component that was already built elsewhere (a rendered chat line). */
+    public void deliver(Audience to, Component line) {
+        to.sendMessage(line);
+    }
+
+    /**
+     * Shows the two messages as a title and subtitle; one that is blank in messages.yml is left out, and nothing is shown when
+     * both are. The times are in ticks.
+     */
+    public void title(Audience to, String titleKey, String subtitleKey, int fadeInTicks, int stayTicks, int fadeOutTicks,
+                      TagResolver... resolvers) {
+        if (isBlank(titleKey) && isBlank(subtitleKey)) {
+            return;
+        }
+        Component title = isBlank(titleKey) ? Component.empty() : component(titleKey, resolvers);
+        Component subtitle = isBlank(subtitleKey) ? Component.empty() : component(subtitleKey, resolvers);
+        to.showTitle(Title.title(title, subtitle, fadeInTicks, stayTicks, fadeOutTicks));
     }
 
     /** The screen of a ban or tempban; the time left is counted from {@code nowMillis}. */

@@ -22,6 +22,29 @@ scoreboard:
   disabled: "<prefix><red>The sidebar is turned off on this server.</red>"
   players-only: "<prefix><red>Only players have a sidebar.</red>"
 
+chat:
+  join: "<dark_gray>[<green>+</green>]</dark_gray> <white><player></white> <gray>joined the game</gray>"
+  join-first: "<dark_gray>[<green>+</green>]</dark_gray> <white><player></white> <gray>joined for the first time</gray> <yellow>Welcome!</yellow>"
+  quit: "<dark_gray>[<red>-</red>]</dark_gray> <white><player></white> <gray>left the game</gray>"
+  # Welcome shown to the player who joins; leave a line empty ("") to switch it off. Fade times are in chat.yml.
+  welcome-title: "<gold><bold><server></bold></gold>"
+  welcome-subtitle: "<gray>Welcome, <white><player></white>!</gray>"
+  welcome-line: "<prefix><gray>Welcome, <white><player></white>! Have a cookie.</gray>"
+  # Shown as <online> in the server-list MOTD when the server hides its player count
+  motd-hidden-count: "?"
+  msg-to: "<gray>to <white><player></white>:</gray> <white><message></white>"
+  msg-from: "<gray>from <white><player></white>:</gray> <white><message></white>"
+  msg-self: "<prefix><red>You cannot message yourself.</red>"
+  not-online: "<prefix><red>That player is not online.</red>"
+  no-reply: "<prefix><red>You have nobody to reply to.</red>"
+  reply-offline: "<prefix><red>The player you were talking to is no longer online.</red>"
+  staff-on: "<prefix><green>Staff chat is on: everything you type goes to staff only. Use <white>/sc</white> again to turn it off.</green>"
+  staff-off: "<prefix><gray>Staff chat is off: you are back in public chat.</gray>"
+  players-only: "<prefix><red>Only players can use that.</red>"
+  usage:
+    msg: "<prefix><gray>Usage: <white>/msg (player) (message)</white> <dark_gray>(also /tell, /w, /whisper, /pm; answer with /r)</dark_gray></gray>"
+    reply: "<prefix><gray>Usage: <white>/r (message)</white> <dark_gray>(answers the last player you talked to)</dark_gray></gray>"
+
 gamemode:
   usage: "<prefix><gray>Usage: <white>/gamemode (survival|creative|adventure|spectator) [player]</white> <dark_gray>(also 0-3, s, c, a, sp; or /gms /gmc /gma /gmsp)</dark_gray></gray>"
   mode:
@@ -100,6 +123,7 @@ moderation:
   mute-broadcast: "<prefix><white><player></white> <gray>was muted by</gray> <white><staff></white><gray>: <reason></gray>"
   mute-temp-broadcast: "<prefix><white><player></white> <gray>was muted for <white><duration></white> by</gray> <white><staff></white><gray>: <reason></gray>"
   unmute-broadcast: "<prefix><white><player></white> <gray>was unmuted by</gray> <white><staff></white><gray>.</gray>"
+  mute-expired: "<prefix><green>Your mute has ended. You can chat again.</green>"
   muted-command: "<prefix><red>You are muted, so you cannot use that command.</red>"
   warn-received: "<prefix><gold><bold>You have been warned</bold></gold> <gray>by <white><staff></white>:</gray> <white><reason></white>"
   warn-done: "<prefix><green>Warned <white><player></white>: <reason></green>"

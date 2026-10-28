@@ -5,7 +5,7 @@ main: dev.casperrs.cookieCore.CookieCore
 loader: dev.casperrs.cookieCore.CookieCoreLoader
 api-version: '26.3'
 load: POSTWORLD
-description: Cookie Empire core - the server's base layer (tab, scoreboard, gamemode, moderation).
+description: Cookie Empire core - the server's base layer (scoreboard, gamemode, moderation, chat and join lines).
 
 dependencies:
   server:
@@ -92,6 +92,15 @@ permissions:
   cookiecore.staff.notify:
     description: See the alerts of silent (-s) kicks, bans, mutes and their undo.
     default: op
+  cookiecore.staff.chat:
+    description: Read and write in the staff channel (/sc).
+    default: op
+  cookiecore.chat.silentjoin:
+    description: Join and quit without a message.
+    default: false
+  cookiecore.chat.msg:
+    description: Send private messages with /msg and /r.
+    default: true
   cookiecore.staff.*:
     description: Every CookieCore staff permission.
     default: op
@@ -104,3 +113,4 @@ permissions:
       cookiecore.staff.warn: true
       cookiecore.staff.history: true
       cookiecore.staff.notify: true
+      cookiecore.staff.chat: true

@@ -96,8 +96,12 @@ class PluginDescriptorTest {
         for (String node : Perm.ALL) {
             Map<String, Object> spec = (Map<String, Object>) permissions().get(node);
             assertNotNull(spec.get("description"), node + " has no description");
-            // the sidebar toggle is for every player by contract; the admin nodes stay op-only
-            Object expected = node.equals(Perm.SCOREBOARD_TOGGLE) ? Boolean.TRUE : "op";
+            // the sidebar toggle and /msg are for every player by contract, silent join is off by default
+            Object expected = switch (node) {
+                case Perm.SCOREBOARD_TOGGLE, Perm.CHAT_MSG -> Boolean.TRUE;
+                case Perm.CHAT_SILENTJOIN -> Boolean.FALSE;
+                default -> "op";
+            };
             assertEquals(expected, spec.get("default"), node + " default");
         }
     }
