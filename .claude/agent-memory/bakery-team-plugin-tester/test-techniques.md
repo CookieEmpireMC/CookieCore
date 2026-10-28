@@ -38,3 +38,7 @@ Verified 2026-10-27 (core-moderation-bans), stable for 26.3.build.205:
   - `AsyncPlayerPreLoginEvent`: the 2-, 3- and 4-arg constructors reach `Bukkit.createProfile` (NPE without a server); the 5- and 6-arg are `[removal]` in 26.3 (javac warning in `mise run check`). Use the 8-arg `(name, address, SocketAddress, uuid, transferred, PlayerProfile, hostname, PlayerLoginConnection)` with Proxy stand-ins for the profile (`getId`, `getName`) and the connection (javac probe, 2026-10-27: no warning).
   - Key scan in `MessagesTest` skips comment lines (Javadoc examples name keys too).
   - `ModerationModule` runs in tests with `Runnable::run` executors: the login-triggered retry then completes inside the refused login, so the next login sees the loaded bans (2026-10-27).
+
+Verified 2026-10-28 (core-moderation-warns), stable for 26.3.build.205:
+  - `PlayerCommandPreprocessEvent(Player, String)` (2-arg) reads the server's online players, so a Proxy player NPEs there. Use the 3-arg `(Player, String, Set<Player>)` with `new HashSet<>()`. `isCancelled()` works on the event.
+  - `PunishmentHistory` status/type mapping is private static behind `show()`, which needs `Messages` and a `SoundService`; not unit tested yet.

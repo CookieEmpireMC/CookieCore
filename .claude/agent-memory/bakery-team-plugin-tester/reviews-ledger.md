@@ -48,3 +48,9 @@ Review doc: `docs/reviews/2026-10-21-core-foundation.md` (sections 1-8 first pas
 First pass areas: CookieCore main class, CoreService, Perm, api/, command/, config/, player/, sound/, storage/, text/, plugin.yml, config/messages/sounds.yml, pom.xml, mise.toml, CI workflow.
 Fix pass (`0786282`): F-01, F-03..F-09 verified fixed. Tab completion 5-15 us at 10k..500k names. F-12 was open then; closed in core-tidy.
 Open (still): F-13 INFO scheduler-cancelled lookup future, F-14 INFO unused `cachedPlayers()` (only tests call it now), F-02 ownership-check cannot run (no .claude/hooks), F-10/F-11 INFO.
+
+## CookieCore `core-moderation-warns` (2026-10-28, round 1), VERDICT NOT READY (M-1)
+Review doc: `docs/reviews/2026-10-28-core-moderation-warns.md` (tester commit `d4c7127` on `core-moderation-warns/plugin-tester`, coder tip `e0d2def`).
+Reviewed: storage split (`JdbcPunishmentStore`, `JdbcSession`, `JdbcPlayerStore.close`), `ModerationService.warn`, `PunishmentHistory`, `MuteListener` whisper block, `ModerationModule` load order, `Perm`/`paper-plugin.yml` warn and history nodes, messages.yml.
+Open: M-1 (failed mute load: `/mute` succeeds, mute not enforced, `usable` set anyway). LOW-4 (abstract `loadActiveMutes`/`deactivateMutes`/`history`, coder). Test gaps: warn service and PunishmentHistory mapping.
+Next run (re-review): `git diff e0d2def..HEAD` on the coder branch only for M-1 fix; keep `storage/` and `moderation/` verdicts above.
