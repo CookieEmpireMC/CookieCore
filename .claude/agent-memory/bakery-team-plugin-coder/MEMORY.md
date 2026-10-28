@@ -1,3 +1,4 @@
 - [Scoreboard/Paper API facts and architecture-test limits](paper-scoreboard-api.md) — javap-verified signatures, scan rules, hook quirks
 - [Moderation/bans facts and smoke-test recipe](moderation-bans-facts.md) — `.kick(` arch trap, wasNull, scratch main via surefire classpath
+- [Warns slice facts](moderation-warns-facts.md) — store split design, whisper-block event choice, BOM/CRLF and shell quirks
 - [CookieCore build and ownership quirks](cookiecore-quirks.md) — mise path, git-in-worktree limits, src/test hook block, ownership-check needs hooks lib
