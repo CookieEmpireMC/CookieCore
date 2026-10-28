@@ -43,7 +43,7 @@ None. Defaults decided by the orchestrator: chat only (no commands) is blocked; 
 | permission | `cookiecore.staff.mute`, `cookiecore.staff.unmute` | plugin-coder | default op, `Perm` constants and `paper-plugin.yml` |
 | storage | `PunishmentType.MUTE` | plugin-coder | no new migration needed (the `type` column is text); say so if that is wrong |
 | class | `moderation.MuteList`, `moderation.MuteCommand`, `TempmuteCommand`, `UnmuteCommand`, `MuteListener` | plugin-coder | |
-| message keys | `moderation.muted_chat`, `moderation.mute_*`, `moderation.unmute_*`, `moderation.already_muted`, `moderation.not_muted` | plugin-coder | `messages.yml` |
+| message keys | `moderation.muted-chat`, `moderation.muted-chat-permanent`, `moderation.already-muted`, `moderation.not-muted`, `moderation.mute-done`, `moderation.mute-temp-done`, `moderation.unmute-done`, `moderation.mute-broadcast`, `moderation.mute-temp-broadcast`, `moderation.unmute-broadcast` | plugin-coder | `messages.yml`; hyphens, because `ArchitectureRulesTest` only accepts `[a-z0-9]+(\.[a-z0-9-]+)+`; two chat keys (timed, permanent) |
 | sound event | `ui_confirm`, `ui_error` | plugin-coder | existing |
 
 ## Tasks
@@ -55,8 +55,8 @@ None. Defaults decided by the orchestrator: chat only (no commands) is blocked; 
 ## Status
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
-| plugin-coder | launched 2026-10-28 08:35 | `core-moderation-mutes/plugin-coder` | | |
-| plugin-tester | waits for coder | `core-moderation-mutes/plugin-tester` | | |
+| plugin-coder | done (1 commit, 205 tests green) | `core-moderation-mutes/plugin-coder` | | Cut: `/mute` and `/unmute` are refused with the storage-down message until the start-up load ran (a clear refusal, no wrong mute); no retry of a failed mute load (chat is fail-open, a restart reloads); no sound for the muted player (chat is async) |
+| plugin-tester | launched 08:40 | `core-moderation-mutes/plugin-tester` | | |
 
 ## Needs human review
 - [ ] In-game: `/mute`, `/tempmute 1m`, chat while muted, `/unmute`, restart with an active mute, offline player.
