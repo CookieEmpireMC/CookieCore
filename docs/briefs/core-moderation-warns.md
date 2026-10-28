@@ -1,6 +1,6 @@
 # core-moderation-warns
 
-**Status:** in progress (slice 2 of phase 4b, timeboxed to 45 minutes by the user on 2026-10-28)  <!-- planned | in progress | review | done -->
+**Status:** review (slice 2 of phase 4b, built within the 45-minute timebox the user set on 2026-10-28; branch verdict READY after one fix round, waits for the in-game check)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-28 · **Depends on:** `core-moderation-bans` (#9) and `core-moderation-mutes` (#10), both merged.
 
 ## Goal
@@ -52,8 +52,10 @@ None. Defaults by the orchestrator: warn is a one-off row (inactive), `/history`
 ## Status
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
-| plugin-coder | launching | `core-moderation-warns/plugin-coder` | | |
-| plugin-tester | waits for coder | `core-moderation-warns/plugin-tester` | | |
+| plugin-coder | done (merged, one fix round) | `core-moderation-warns/plugin-coder` | READY | Split `JdbcPlayerStore` (325 to 202 lines) into `JdbcPunishmentStore` + `JdbcSession`; `/warn`, `/history`, whisper block inside `MuteListener#onCommand` (no separate class); LOW-1/LOW-2 of the mutes review. M-1 fixed: mutes are refused while the mute load failed (option b). `MuteCommandBlocker` was not built as a class. |
+| plugin-tester | done (merged) | `core-moderation-warns/plugin-tester` | READY | 224 tests; `docs/reviews/2026-10-28-core-moderation-warns.md` (two rounds) |
+
+Ownership note: the coder first edited two tester-owned test files through `sed` (the Edit hook would have denied it). Rick removed those edits from the coder commits (rewriting the unmerged local branch) and Gandalf adopted the files in his own first commit. `ownership-check` is clean.
 
 ## Needs human review
 - [ ] In-game: `/warn` (target sees it, sound), `/history` with warn/kick/ban/mute entries and pages, offline name, muted player trying `/msg` and `/me`.
