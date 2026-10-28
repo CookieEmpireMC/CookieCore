@@ -1,6 +1,6 @@
 # core-chat-join
 
-**Status:** in progress  <!-- planned | in progress | review | done -->
+**Status:** review (branch verdict READY after one fix round; waits for the in-game check)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-28 · **Depends on:** `core-moderation-bans` (#9), `core-moderation-mutes` (#10), `core-moderation-warns` (#11), all merged. Phase 5 of `docs/briefs/ROADMAP.md`.
 
 ## Goal
@@ -77,8 +77,8 @@ None blocking. Defaults decided by the orchestrator (overrule in review): Englis
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
 | resource-pack-researcher | done | feature branch | n/a | `docs/research/core-chat-join-apis.md` committed (one stalled run, resumed) |
-| plugin-coder | planned | `core-chat-join/plugin-coder` | | |
-| plugin-tester | planned | `core-chat-join/plugin-tester` | | |
+| plugin-coder | done (merged, one fix round) | `core-chat-join/plugin-coder` | READY | `CoreWiring` extracted (`CookieCore.java` 199 to 193 lines); `chat` package (14 classes); steps 2 to 5 in one commit. Added `chat.yml: default-prefix`; `motd` is a list of 1-2 lines; `welcome` holds only fade ticks (texts in `messages.yml`); `/reply` alias; keys `chat.not-online`, `chat.msg-self`, `chat.players-only`, `chat.usage.*`, `chat.motd-hidden-count`; `chat.enabled` is start-up only; players only for `/msg` and `/sc` (console reads staff chat). Cut: `minecraft:msg` restriction for senders without `cookiecore.chat.msg`; multi-target selectors in `/msg` use the first player. |
+| plugin-tester | done (merged) | `core-chat-join/plugin-tester` | READY | 258 tests; `docs/reviews/2026-10-28-core-chat-join.md` (two rounds); fixed M-1 (muted staff with toggle on and permission gone) and M-2 (non-volatile `settings`) |
 
 ## Merge order
 1. research note (direct on the feature branch)

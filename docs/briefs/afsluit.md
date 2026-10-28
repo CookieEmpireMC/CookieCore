@@ -1,9 +1,9 @@
-# Afsluit: stand van zaken (bijgewerkt 2026-10-28, na de merge van PR #10; 4b plak 2 staat open als PR)
+# Afsluit: stand van zaken (bijgewerkt 2026-10-28, na de merge van PR #11; fase 5 staat open als PR)
 
 Overdracht voor de volgende sessie. Lees eerst dit bestand, daarna `docs/briefs/ROADMAP.md`.
 
 ## Waar staan we
-`main` bevat alles tot en met fase 4b plak 1. Alle PR's zijn door Luuk gemerged. Daarbovenop staat plak 2 van 4b (`/warn`, `/history`, geblokkeerde `/msg`-commando's voor gemute spelers, opsplitsing van `JdbcPlayerStore`) als open PR op `feature/core-moderation-warns`.
+`main` bevat alles tot en met fase 4b (moderatie is af). Alle PR's zijn door Luuk gemerged. Daarbovenop staat fase 5 `core-chat-join` als open PR op `feature/core-chat-join`.
 
 | Stap | PR | Inhoud |
 |---|---|---|
@@ -13,12 +13,13 @@ Overdracht voor de volgende sessie. Lees eerst dit bestand, daarna `docs/briefs/
 | Fase 3 `core-gamemode` | #6 | `/gamemode` `/gm` `/gms` `/gmc` `/gma` `/gmsp`, `/fly`, `/speed` |
 | Fase 4a `core-moderation-bans` | #9 | `/kick` `/ban` `/tempban` `/unban`, banscherm, staff-melding, auditlog (`punishments`, opslag v3) |
 | Fase 4b plak 1 `core-moderation-mutes` | #10 | `/mute` `/tempmute` `/unmute`, chat geblokkeerd, overleeft herstart |
-| Fase 4b plak 2 `core-moderation-warns` | open PR | `/warn`, `/history <speler> [pagina]`, `/msg` `/tell` `/w` `/whisper` `/me` geblokkeerd voor gemute spelers, `JdbcPunishmentStore` los van `JdbcPlayerStore` |
+| Fase 4b plak 2 `core-moderation-warns` | #11 | `/warn`, `/history <speler> [pagina]`, `/me` en `/msg`-labels geblokkeerd voor gemute spelers, `JdbcPunishmentStore` los van `JdbcPlayerStore` |
+| Fase 5 `core-chat-join` | open PR | chatformaat met rank-prefix (LuckPerms of `chat.yml`), join/quit/first-join, welkomsttitel, server-MOTD, `/msg` `/r`, `/sc` staff chat, melding als een tempmute afloopt, `CoreWiring` |
 
-- `mise run check`: 213 tests op `main`, 224 op de warns-branch; 0 mislukt, 1 bewust overgeslagen (scoreboard L-4).
+- `mise run check`: 224 tests op `main`, 258 op de chat-branch; 0 mislukt, 1 bewust overgeslagen (scoreboard L-4).
 - Fase 1 (tab) is door Luuk overgeslagen.
-- **Nog te doen in 4b (dan is het af):** alleen de melding als een tempmute afloopt. Die vraagt een timer, en de scheduler mag alleen in `CookieCore.java` (199 van max 200 regels). Doe dat bewust, bijvoorbeeld met fase 5, of laat de melding komen bij de eerstvolgende chat- of join-actie. Daarna fase 5. Start pas na Luuks "go"; hij draait `/bakery-team:feature` zelf.
-- Follow-ups uit de reviews staan in de PR's #10 en de warns-PR (o.a. `PunishmentStore`-methodes abstract maken, `activeNames` bij tab-completie, history-index).
+- **Volgende:** fase 6 `core-hub-essentials` (`/spawn` `/setspawn`, vanish, maintenance, `/seen`; alleen wat de hub echt nodig heeft), daarna fase 7 `core-hardening`. Start pas na Luuks "go". Eerst de in-game test van alles tot en met fase 5, vooral de chat (zie hieronder).
+- Follow-ups uit de reviews staan in de PR's #10, #11 en de chat-PR (o.a. `PunishmentStore`-methodes abstract maken, `activeNames` bij tab-completie, history-index, LuckPerms-prefix per bericht parsen).
 
 ## Voor Luuk (niet door een agent te doen)
 - **In-game test op een Paper 26.3-server** (nog niets is door een echte server gehaald):
@@ -58,4 +59,4 @@ Overdracht voor de volgende sessie. Lees eerst dit bestand, daarna `docs/briefs/
 ## Eerste stappen volgende sessie
 1. `git status`, `git fetch`; staat de docs-PR (`feature/docs-afsluit`) al in `main`? Zo ja: `git switch main && git pull`, lokale `feature/docs-afsluit` verwijderen.
 2. Vraag Luuk naar de uitkomst van de in-game test (vooral het scoreboard); bij een rendering-probleem eerst de Teams-fallback.
-3. Bij Luuks "go": de volgende fase is fase 5 `core-chat-join` (chatformaat, join/quit, `/msg` `/r`, staff chat); de verloopmelding van tempmutes past daar goed bij. Reviews: `docs/reviews/2026-10-28-core-moderation-warns.md`.
+3. Bij Luuks "go": fase 6 `core-hub-essentials` (`/spawn` `/setspawn`, vanish, maintenance mode, `/seen`; alleen wat de hub bewezen nodig heeft). Reviews: `docs/reviews/2026-10-28-core-chat-join.md` (in-game gids, 16 stappen).
