@@ -55,6 +55,7 @@ final class ModerationFixture {
     private final String url = "jdbc:h2:mem:mod" + UUID.randomUUID().toString().replace("-", "") + ";DB_CLOSE_DELAY=-1";
     final JdbcPlayerStore store;
     final BanList bans = new BanList();
+    final MuteList mutes = new MuteList();
     final CommandDispatcher<CommandSourceStack> dispatcher = new CommandDispatcher<>();
     final List<TestPlayer> players = new ArrayList<>();
     final Queue<Runnable> deferred = new ArrayDeque<>();
@@ -86,7 +87,7 @@ final class ModerationFixture {
                 task.run();
             }
         };
-        return new ModerationService(punishments, io, Runnable::run, bans, messages, sounds, log.logger, () -> now,
+        return new ModerationService(punishments, io, Runnable::run, bans, mutes, messages, sounds, log.logger, () -> now,
                 () -> players.stream().filter(p -> p.online).map(p -> p.player).toList(), () -> storageUp);
     }
 

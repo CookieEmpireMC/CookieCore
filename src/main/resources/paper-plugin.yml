@@ -77,8 +77,14 @@ permissions:
   cookiecore.staff.unban:
     description: Use /unban (also /pardon).
     default: op
+  cookiecore.staff.mute:
+    description: Use /mute and /tempmute.
+    default: op
+  cookiecore.staff.unmute:
+    description: Use /unmute.
+    default: op
   cookiecore.staff.notify:
-    description: See the alerts of silent (-s) kicks, bans and unbans.
+    description: See the alerts of silent (-s) kicks, bans, mutes and their undo.
     default: op
   cookiecore.staff.*:
     description: Every CookieCore staff permission.
@@ -87,4 +93,6 @@ permissions:
       cookiecore.staff.kick: true
       cookiecore.staff.ban: true
       cookiecore.staff.unban: true
+      cookiecore.staff.mute: true
+      cookiecore.staff.unmute: true
       cookiecore.staff.notify: true

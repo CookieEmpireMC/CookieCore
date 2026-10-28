@@ -25,13 +25,16 @@ public final class Perm {
     /** Covers {@code /ban} and {@code /tempban}. */
     public static final String STAFF_BAN = "cookiecore.staff.ban";
     public static final String STAFF_UNBAN = "cookiecore.staff.unban";
+    /** Covers {@code /mute} and {@code /tempmute}. */
+    public static final String STAFF_MUTE = "cookiecore.staff.mute";
+    public static final String STAFF_UNMUTE = "cookiecore.staff.unmute";
     /** Sees the alerts of silent ({@code -s}) actions. */
     public static final String STAFF_NOTIFY = "cookiecore.staff.notify";
 
     /** Every node above; used by tests to keep {@code paper-plugin.yml} in sync. */
     public static final List<String> ALL = List.of(ADMIN_VERSION, ADMIN_RELOAD, SCOREBOARD_TOGGLE,
             GAMEMODE_SURVIVAL, GAMEMODE_CREATIVE, GAMEMODE_ADVENTURE, GAMEMODE_SPECTATOR, GAMEMODE_OTHERS,
-            FLY, FLY_OTHERS, SPEED, SPEED_OTHERS, STAFF_KICK, STAFF_BAN, STAFF_UNBAN, STAFF_NOTIFY);
+            FLY, FLY_OTHERS, SPEED, SPEED_OTHERS, STAFF_KICK, STAFF_BAN, STAFF_UNBAN, STAFF_MUTE, STAFF_UNMUTE, STAFF_NOTIFY);
 
     private Perm() {
     }

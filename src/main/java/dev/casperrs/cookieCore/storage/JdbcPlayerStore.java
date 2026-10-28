@@ -218,11 +218,20 @@ public final class JdbcPlayerStore implements PlayerStore, SidebarStore, Punishm
 
     @Override
     public List<BanRecord> loadActiveBans(long now) throws StorageException {
+        return loadActive(PunishmentType.BAN, now);
+    }
+
+    @Override
+    public List<MuteRecord> loadActiveMutes(long now) throws StorageException {
+        return loadActive(PunishmentType.MUTE, now).stream().map(MuteRecord::of).toList();
+    }
+
+    private List<BanRecord> loadActive(PunishmentType type, long now) throws StorageException {
         List<BanRecord> out = new ArrayList<>();
         try {
             Connection c = connection();
             try (PreparedStatement st = c.prepareStatement("SELECT id, target_uuid, target_name, actor_name, reason, created_at, "
-                    + "expires_at FROM " + p + "punishments WHERE type = 'BAN' AND active = TRUE "
+                    + "expires_at FROM " + p + "punishments WHERE type = '" + type.name() + "' AND active = TRUE "
                     + "AND (expires_at IS NULL OR expires_at > ?)")) {
                 st.setLong(1, now);
                 try (ResultSet rs = st.executeQuery()) {
@@ -244,18 +253,27 @@ public final class JdbcPlayerStore implements PlayerStore, SidebarStore, Punishm
             }
         } catch (SQLException e) {
             invalidate();
-            throw new StorageException("Could not load the active bans", e);
+            throw new StorageException("Could not load the active " + type + "s", e);
         }
         return out;
     }
 
     @Override
     public int deactivateBans(UUID target, UUID byUuid, String byName, String reason, long now) throws StorageException {
+        return deactivate(PunishmentType.BAN, target, byUuid, byName, reason, now);
+    }
+
+    @Override
+    public int deactivateMutes(UUID target, UUID byUuid, String byName, String reason, long now) throws StorageException {
+        return deactivate(PunishmentType.MUTE, target, byUuid, byName, reason, now);
+    }
+
+    private int deactivate(PunishmentType type, UUID target, UUID byUuid, String byName, String reason, long now) throws StorageException {
         try {
             Connection c = connection();
             try (PreparedStatement ps = c.prepareStatement("UPDATE " + p + "punishments SET active = FALSE, removed_at = ?, "
                     + "removed_by_uuid = ?, removed_by_name = ?, remove_reason = ? "
-                    + "WHERE target_uuid = ? AND type = 'BAN' AND active = TRUE")) {
+                    + "WHERE target_uuid = ? AND type = '" + type.name() + "' AND active = TRUE")) {
                 ps.setLong(1, now);
                 if (byUuid == null) {
                     ps.setNull(2, Types.VARCHAR);
@@ -269,7 +287,7 @@ public final class JdbcPlayerStore implements PlayerStore, SidebarStore, Punishm
             }
         } catch (SQLException e) {
             invalidate();
-            throw new StorageException("Could not remove the ban of " + target, e);
+            throw new StorageException("Could not remove the " + type + " of " + target, e);
         }
     }
 

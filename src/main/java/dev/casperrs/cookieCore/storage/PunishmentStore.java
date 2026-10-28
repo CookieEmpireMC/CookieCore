@@ -23,4 +23,14 @@ public interface PunishmentStore {
      * rows changed.
      */
     int deactivateBans(UUID target, @Nullable UUID byUuid, String byName, String reason, long now) throws StorageException;
+
+    /** Every mute that is active and has not expired at {@code now}. */
+    default List<MuteRecord> loadActiveMutes(long now) throws StorageException {
+        return List.of();
+    }
+
+    /** Like {@link #deactivateBans} for mutes. */
+    default int deactivateMutes(UUID target, @Nullable UUID byUuid, String byName, String reason, long now) throws StorageException {
+        return 0;
+    }
 }

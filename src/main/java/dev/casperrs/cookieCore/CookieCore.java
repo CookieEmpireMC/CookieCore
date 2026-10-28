@@ -98,6 +98,7 @@ public final class CookieCore extends JavaPlugin {
 
         // 4. listeners
         getServer().getPluginManager().registerEvents(moderation.listener(), this);
+        getServer().getPluginManager().registerEvents(moderation.muteListener(), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(directory), this);
         Bukkit.getOnlinePlayers().forEach(p -> directory.seen(p.getUniqueId(), p.getName())); // after a /reload
         getServer().getPluginManager().registerEvents(scoreboard.listener(), this);
