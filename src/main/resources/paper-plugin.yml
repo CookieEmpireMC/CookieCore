@@ -68,3 +68,23 @@ permissions:
   cookiecore.speed.others:
     description: Use /speed on other players.
     default: op
+  cookiecore.staff.kick:
+    description: Use /kick.
+    default: op
+  cookiecore.staff.ban:
+    description: Use /ban and /tempban.
+    default: op
+  cookiecore.staff.unban:
+    description: Use /unban (also /pardon).
+    default: op
+  cookiecore.staff.notify:
+    description: See the alerts of silent (-s) kicks, bans and unbans.
+    default: op
+  cookiecore.staff.*:
+    description: Every CookieCore staff permission.
+    default: op
+    children:
+      cookiecore.staff.kick: true
+      cookiecore.staff.ban: true
+      cookiecore.staff.unban: true
+      cookiecore.staff.notify: true
