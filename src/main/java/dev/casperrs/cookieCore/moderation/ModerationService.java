@@ -7,6 +7,7 @@ import dev.casperrs.cookieCore.log.WarnOnce;
 import dev.casperrs.cookieCore.sound.SoundEvents;
 import dev.casperrs.cookieCore.sound.SoundService;
 import dev.casperrs.cookieCore.storage.BanRecord;
+import dev.casperrs.cookieCore.storage.MuteRecord;
 import dev.casperrs.cookieCore.storage.NewPunishment;
 import dev.casperrs.cookieCore.storage.PunishmentStore;
 import dev.casperrs.cookieCore.storage.PunishmentType;
@@ -38,9 +39,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Kick, ban, tempban and unban. A command calls these on the main thread. For a ban or unban the database write runs
- * first on the storage thread; only when it succeeded does the main thread update the {@link BanList}, remove the
- * target, confirm to the sender and alert the others, so a failed write leaves everything as it was. Kicks are
+ * Kick, ban, tempban, unban and the mute equivalents. A command calls these on the main thread. For a ban, mute or
+ * their undo the database write runs first on the storage thread; only when it succeeded does the main thread update
+ * the {@link BanList} or {@link MuteList}, remove a banned target, confirm to the sender and alert the others, so a
+ * failed write leaves everything as it was. Kicks are
  * recorded too, but still work when the database is down. One INFO log line per action.
  */
 public final class ModerationService {
@@ -51,6 +53,7 @@ public final class ModerationService {
     private final Executor io;
     private final Executor main;
     private final BanList bans;
+    private final MuteList mutes;
     private final Messages messages;
     private final SoundService sounds;
     private final Logger log;
@@ -61,14 +64,22 @@ public final class ModerationService {
     /** Targets with a write in flight (main thread only): a second command on them waits, so one ban never gets two rows. */
     private final Set<UUID> busy = new HashSet<>();
 
-    /** {@code io} is the storage thread, {@code main} runs a task on the main thread; {@code storageUp} says whether bans can be saved. */
+    /** Without mute support: mutes are kept in a private list. */
     public ModerationService(PunishmentStore store, Executor io, Executor main, BanList bans, Messages messages,
+                             SoundService sounds, Logger log, LongSupplier clock,
+                             Supplier<? extends Collection<? extends Player>> online, BooleanSupplier storageUp) {
+        this(store, io, main, bans, new MuteList(), messages, sounds, log, clock, online, storageUp);
+    }
+
+    /** {@code io} is the storage thread, {@code main} runs a task on the main thread; {@code storageUp} says whether bans and mutes can be saved. */
+    public ModerationService(PunishmentStore store, Executor io, Executor main, BanList bans, MuteList mutes, Messages messages,
                              SoundService sounds, Logger log, LongSupplier clock,
                              Supplier<? extends Collection<? extends Player>> online, BooleanSupplier storageUp) {
         this.store = store;
         this.io = io;
         this.main = main;
         this.bans = bans;
+        this.mutes = mutes;
         this.messages = messages;
         this.sounds = sounds;
         this.log = log;
@@ -157,6 +168,73 @@ public final class ModerationService {
                 () -> store.deactivateBans(target.uuid(), actor.uuid(), actor.name(), reason.get(), now),
                 changed -> afterUnban(sender, actor, target, reason.get(), silent));
         return Command.SINGLE_SUCCESS;
+    }
+
+    /** {@code length} null is a permanent mute. */
+    public int mute(CommandSender sender, PlayerRef target, @Nullable Duration length, boolean silent, @Nullable String reasonInput) {
+        Actor actor = Actor.of(sender, messages.raw("moderation.console"));
+        Optional<String> reason = reasonOf(sender, reasonInput);
+        if (reason.isEmpty()) {
+            return 0;
+        }
+        if (!storageUp.getAsBoolean()) {
+            return fail(sender, "moderation.error.storage-down");
+        }
+        if (actor.is(target.uuid())) {
+            return fail(sender, "moderation.error.self");
+        }
+        long now = clock.getAsLong();
+        if (mutes.active(target.uuid(), now).isPresent()) {
+            return fail(sender, "moderation.already-muted", player(target.name()));
+        }
+        if (!busy.add(target.uuid())) {
+            return fail(sender, "moderation.error.busy", player(target.name()));
+        }
+        Long expires = length == null ? null : now + length.toMillis();
+        NewPunishment row = new NewPunishment(PunishmentType.MUTE, target.uuid(), target.name(), actor.uuid(), actor.name(),
+                reason.get(), now, expires, silent);
+        background(sender, target.uuid(), "mute of " + target.name(), () -> store.insert(row),
+                id -> afterMute(sender, actor, new MuteRecord(id, target.uuid(), target.name(), actor.name(), row.reason(), now, expires),
+                        length, silent));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    public int unmute(CommandSender sender, PlayerRef target, boolean silent, @Nullable String reasonInput) {
+        Actor actor = Actor.of(sender, messages.raw("moderation.console"));
+        Optional<String> reason = reasonOf(sender, reasonInput);
+        if (reason.isEmpty()) {
+            return 0;
+        }
+        if (!storageUp.getAsBoolean()) {
+            return fail(sender, "moderation.error.storage-down");
+        }
+        long now = clock.getAsLong();
+        if (mutes.active(target.uuid(), now).isEmpty()) {
+            return fail(sender, "moderation.not-muted", player(target.name()));
+        }
+        if (!busy.add(target.uuid())) {
+            return fail(sender, "moderation.error.busy", player(target.name()));
+        }
+        background(sender, target.uuid(), "unmute of " + target.name(),
+                () -> store.deactivateMutes(target.uuid(), actor.uuid(), actor.name(), reason.get(), now),
+                changed -> afterUnmute(sender, actor, target, reason.get(), silent));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private void afterMute(CommandSender sender, Actor actor, MuteRecord mute, @Nullable Duration length, boolean silent) {
+        mutes.put(mute);
+        TagResolver[] placeholders = placeholders(actor, mute.targetName(), mute.reason(), length, mute.expiresAt());
+        done(sender, length == null ? "moderation.mute-done" : "moderation.mute-temp-done", placeholders);
+        alert(sender, mute.targetUuid(), length == null ? "moderation.mute-broadcast" : "moderation.mute-temp-broadcast", silent, placeholders);
+        logAction(length == null ? "MUTE" : "TEMPMUTE", actor, mute.targetName(), mute.reason(), length, silent);
+    }
+
+    private void afterUnmute(CommandSender sender, Actor actor, PlayerRef target, String reason, boolean silent) {
+        mutes.remove(target.uuid());
+        TagResolver[] placeholders = placeholders(actor, target.name(), reason, null, null);
+        done(sender, "moderation.unmute-done", placeholders);
+        alert(sender, target.uuid(), "moderation.unmute-broadcast", silent, placeholders);
+        logAction("UNMUTE", actor, target.name(), reason, null, silent);
     }
 
     private void afterKick(CommandSender sender, Actor actor, Player target, String reason, boolean silent) {

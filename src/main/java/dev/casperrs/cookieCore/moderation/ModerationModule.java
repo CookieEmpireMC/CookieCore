@@ -5,6 +5,8 @@ import dev.casperrs.cookieCore.command.KnownPlayerArgument;
 import dev.casperrs.cookieCore.player.PlayerDirectory;
 import dev.casperrs.cookieCore.sound.SoundService;
 import dev.casperrs.cookieCore.storage.BanRecord;
+import dev.casperrs.cookieCore.log.WarnOnce;
+import dev.casperrs.cookieCore.storage.MuteRecord;
 import dev.casperrs.cookieCore.storage.PunishmentStore;
 import dev.casperrs.cookieCore.storage.StorageException;
 import dev.casperrs.cookieCore.text.Messages;
@@ -22,7 +24,7 @@ import java.util.function.LongSupplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/** Wires kick, ban, tempban and unban together so the main class only has to start and register them. */
+/** Wires kick, ban, tempban, unban and the mute commands together so the main class only has to start and register them. */
 public final class ModerationModule {
 
     private final Logger log;
@@ -32,8 +34,10 @@ public final class ModerationModule {
     private final Messages messages;
     private final LongSupplier clock;
     private final BanList bans = new BanList();
+    private final MuteList mutes = new MuteList();
     private final ModerationService service;
     private final ModerationListener listener;
+    private final MuteListener muteListener;
     /** False until the active bans are loaded: bans cannot be changed meanwhile, same as with no database. */
     private volatile boolean usable;
     private final AtomicBoolean loading = new AtomicBoolean();
@@ -49,13 +53,18 @@ public final class ModerationModule {
         this.directory = directory;
         this.messages = messages;
         this.clock = clock;
-        this.service = new ModerationService(store, io, main, bans, messages, sounds, log, clock, Bukkit::getOnlinePlayers,
+        this.service = new ModerationService(store, io, main, bans, mutes, messages, sounds, log, clock, Bukkit::getOnlinePlayers,
                 () -> usable && directory.storageAvailable());
         this.listener = new ModerationListener(bans, messages, clock, this::load);
+        this.muteListener = new MuteListener(mutes, messages, clock, new WarnOnce(log));
     }
 
     public Listener listener() {
         return listener;
+    }
+
+    public Listener muteListener() {
+        return muteListener;
     }
 
     /**
@@ -81,6 +90,7 @@ public final class ModerationModule {
         try {
             if (!directory.storageAvailable()) {
                 bans.markLoaded();
+                mutes.markLoaded();
                 return;
             }
             List<BanRecord> active = store.loadActiveBans(clock.getAsLong());
@@ -88,6 +98,7 @@ public final class ModerationModule {
             usable = true;
             bans.markLoaded();
             log.info("Loaded " + active.size() + " active ban(s)");
+            loadMutes();
         } catch (StorageException | RuntimeException e) {
             if (!loadFailureLogged) {
                 loadFailureLogged = true;
@@ -95,6 +106,18 @@ public final class ModerationModule {
             }
         } finally {
             loading.set(false);
+        }
+    }
+
+    /** A failed mute load only leaves chat unblocked (a mute is no security boundary); logins are not affected. */
+    private void loadMutes() {
+        try {
+            List<MuteRecord> active = store.loadActiveMutes(clock.getAsLong());
+            mutes.load(active);
+            mutes.markLoaded();
+            log.info("Loaded " + active.size() + " active mute(s)");
+        } catch (StorageException | RuntimeException e) {
+            log.log(Level.SEVERE, "Could not load the active mutes: muted players can chat until the next restart", e);
         }
     }
 
@@ -107,6 +130,10 @@ public final class ModerationModule {
         check(commands.register(new TempbanCommand(kit, service).node(), "Ban a player for a while"), missing, "tempban");
         check(commands.register(new UnbanCommand(kit, service, bannedPlayer).node(), "Unban a player", List.of("pardon")),
                 missing, "unban", "pardon");
+        MutedPlayerArgument mutedPlayer = new MutedPlayerArgument(new KnownPlayerArgument(directory, messages), mutes, clock);
+        check(commands.register(new MuteCommand(kit, service).node(), "Mute a player"), missing, "mute");
+        check(commands.register(new TempmuteCommand(kit, service).node(), "Mute a player for a while"), missing, "tempmute");
+        check(commands.register(new UnmuteCommand(kit, service, mutedPlayer).node(), "Unmute a player"), missing, "unmute");
         if (!missing.isEmpty()) {
             log.warning("Could not take over /" + String.join(", /", missing)
                     + " (another plugin owns it); the namespaced cookiecore:<command> still works");
