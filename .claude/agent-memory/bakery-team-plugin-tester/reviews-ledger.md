@@ -4,6 +4,12 @@ description: Per reviewed area, the commit verified and what passed; re-review o
 metadata:
   type: project
 ---
+## CookieCore `core-chat-join` round 2 (2026-10-28), VERDICT READY
+Coder commit `a49eeb4` (authored Wesly, on the tester branch `core-chat-join/plugin-tester`; src/main and messages.yml only). Reviewed the whole `git show a49eeb4`. Tests: `9cbf4b6` (ChatListenerTest 4, ChatSettingsTest +2, ArchitectureRulesTest +1). Suite 258 run, 0 failed, 1 skipped; `mise run check` BUILD SUCCESS.
+Resolved: M-1 (`MuteListener` predicate is `Predicate<Player>`, `ChatModule.staffChannelActive(Player)` needs the permission), M-2 (`CookieCore.settings` volatile, reflection test), L-1 (rank cache swapped as a whole, miss = default prefix, no permission read), L-3 (console stays a staff reader; `staffReaders` static, tested), L-4 (`chat.motd-hidden-count` key), L-5 (bad motd item rule), PERF-LOW-3 (notifier early return).
+Open LOW: L-2 (`hasPermission` read on chat thread in `ChatListener.java:46` and in `staffChannelActive`, reads only), L-6 (`CookieCore.java:90` inline FQN), L-7 (staff line dropped on shutdown), PERF-LOW-1 (LuckPerms prefix parsed per message).
+Gap: `ChatModule.staffChannelActive` itself is not unit tested (needs a JavaPlugin); ChatListenerTest mirrors the expression. Suggest a package-private static seam. In-game step 12 covers it.
+
 ## CookieCore `core-chat-join` (2026-10-28, round 1), VERDICT NOT READY (M-1, M-2)
 Review doc: `docs/reviews/2026-10-28-core-chat-join.md` (tester branch `core-chat-join/plugin-tester` in the coder's worktree: `643433c` fixes the two invalidated tests, `31e32ef` chat tests, then the docs commit). Coder verified at `03dce54`.
 Areas: `chat/*` (all 15 classes), `CoreWiring` and the `CookieCore.java` wiring diff, `MuteListener`/`MuteList`/`ModerationModule` (exemption, labels, `collectMissing`), `ChatText`, `Messages` helpers, `PluginSettings` `chat.enabled`, `Perm`, `paper-plugin.yml`, `chat.yml`, `messages.yml`, `sounds.yml`, `config.yml`.

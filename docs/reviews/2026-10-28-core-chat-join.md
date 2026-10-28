@@ -5,7 +5,7 @@
 - **Tester branch:** `core-chat-join/plugin-tester` in the coder's worktree. Commits: `643433c` (the two invalidated tests), `31e32ef` (chat tests), then the docs commit.
 - **Target:** Paper 26.3 (`26.3.build.205-stable`), `api-version: '26.3'`, Java 25, LuckPerms API `5.5` (`provided`).
 
-VERDICT: NOT READY (round 1). Two MEDIUM findings go back to plugin-coder (M-1, M-2), both one-to-few-line fixes. No HIGH, no PERF-HIGH. After the fix round the review is a re-review of `git diff 03dce54..HEAD -- src/main` only.
+VERDICT: READY (round 2, section 10). Round 1 was NOT READY with two MEDIUM findings (M-1, M-2); both are fixed in `a49eeb4` and covered by tests in `9cbf4b6`. No HIGH, no PERF-HIGH, no open MEDIUM. The remaining LOW items are PR follow-ups.
 
 ## 1. Target version
 
@@ -128,3 +128,19 @@ Title from join and the chat report screen are unverified in game (section 6). N
 ## 9. Architecture doc
 
 `docs/architecture.md` updated on this branch: the `chat` package row, `CoreWiring` and the root row, `ChatText` and the `Messages` helpers, the chat and server-list thread model, the enable and disable order, LuckPerms rules, the dependency direction and the test list.
+
+## 10. Round 2 (coder commit `a49eeb4`, tester tests `9cbf4b6`)
+
+Reviewed: `git show a49eeb4` (9 files in `src/main` and `messages.yml`, +50 -26), read in full, with the tests run in full (258 run, 0 failed, 1 skipped; `mise run check` BUILD SUCCESS).
+
+- **M-1 fixed.** `MuteListener.chatExemption` is `volatile Predicate<Player>`, tested with `event.getPlayer()`. `ChatModule.staffChannelActive(Player)` is `staff.active(uuid) && hasPermission(Perm.STAFF_CHAT)`. Checked the three cases: muted with the toggle and no permission is cancelled by `MuteListener` and gets the muted line; muted with the permission is not cancelled by `MuteListener` and reaches the staff branch; unmuted without the permission gets the public format. Tests: `ChatListenerTest` (three cases, real `AsyncChatEvent`). Gap, LOW: `ChatModule` needs a `JavaPlugin`, so the test writes the same expression itself. A package-private static `staffExempt(StaffChat, Player)` would let the test call the production line. The policy is still guarded by in-game step 12.
+- **M-2 fixed.** `CookieCore.settings` is `private volatile`. `ArchitectureRulesTest.settingsAreVolatileBecauseTheChatAndPingThreadsReadThem` checks it by reflection.
+- **L-1 fixed.** `PermissionRankSource.refreshAll` builds the new map aside and swaps a volatile field (no empty window for the chat thread); a cache miss returns the chat.yml default prefix (`settings.prefixFor(p -> false)`), so no Bukkit permission is read on the chat thread. Test: `ChatSettingsTest.theRankCacheIsSwappedAndAMissNeverReadsPermissions` (a Player proxy fails on `hasPermission`). Trade-off, accepted: a player who is not cached yet shows the default prefix until the next refresh, instead of their rank.
+- **L-3 decision applied.** The console stays a staff-chat reader. `ChatModule.staffReaders(Collection, Audience)` is package-visible static. Test: `ChatListenerTest.staffReadersArePermittedPlayersAndTheConsole`.
+- **L-4 fixed.** The hidden-count text is `messages.yml: chat.motd-hidden-count` (`"?"`), read through `Messages.raw` on the ping thread (volatile `yaml`, concurrent warn set; a missing key logs once and would show the path, which the jar copy prevents).
+- **L-5 fixed.** A motd item that is blank or not text gives one problem line and keeps the default text (`motd` null). Test: `ChatSettingsTest.aMotdItemThatIsNotTextKeepsTheDefaultAndSaysSo`.
+- **PERF-LOW-3 fixed.** `MuteExpiryNotifier.tick()` returns before building the set when `watched` is empty. The existing notifier tests cover the behaviour (nothing changes when nothing is watched); no new test.
+- **Still open, LOW, PR follow-ups:** L-2 (`hasPermission` read on the chat thread in `ChatListener.java:46` and in `staffChannelActive`; reads only, accepted), L-6 (`CookieCore.java:90` inline fully qualified class, pre-existing), L-7 (staff line dropped silently during shutdown, accepted), PERF-LOW-1 (LuckPerms prefix parsed per message, `LuckPermsRankSource.java:37`).
+- **Regression check:** the CoreWiring order and the disable order are unchanged by `a49eeb4`; `CookieCore.java` is still under 200 lines; the chat package stays 14 classes; no new Bukkit call on an async path.
+
+VERDICT: READY (round 2). In-game step 12 (muted staff with the permission removed) must still be checked on a server, since no unit test reaches the `ChatModule` line.
