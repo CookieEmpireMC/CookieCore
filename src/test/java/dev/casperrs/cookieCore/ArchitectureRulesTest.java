@@ -90,6 +90,13 @@ class ArchitectureRulesTest {
         return out;
     }
 
+    /** The chat and ping threads read the settings through lambdas, so the field must be volatile (a reload replaces it). */
+    @Test
+    void settingsAreVolatileBecauseTheChatAndPingThreadsReadThem() throws ReflectiveOperationException {
+        var field = Class.forName(BASE + ".CookieCore", false, getClass().getClassLoader()).getDeclaredField("settings");
+        assertTrue(java.lang.reflect.Modifier.isVolatile(field.getModifiers()), "CookieCore.settings must be volatile");
+    }
+
     private static void assertNone(List<String> hits, String rule) {
         assertTrue(hits.isEmpty(), rule + " violated at " + hits);
     }

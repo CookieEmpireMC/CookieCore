@@ -2,19 +2,23 @@ package dev.casperrs.cookieCore.chat;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.casperrs.cookieCore.TestSupport;
 import dev.casperrs.cookieCore.chat.ChatFixture.FakePlayer;
 import dev.casperrs.cookieCore.config.YamlFiles;
+import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import org.bukkit.entity.Player;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.junit.jupiter.api.Test;
 
@@ -116,5 +120,49 @@ class ChatSettingsTest {
         ChatSettings settings = ChatSettings.parse(badRank, problems::add).orElseThrow();
         assertEquals(1, settings.ranks().size(), "the valid rank is kept");
         assertEquals(List.of("chat.yml: ranks entry 2 needs a 'permission' and a 'prefix'; skipped"), problems);
+    }
+
+    /** A motd item that is blank or not text is reported once, and the default server-list text is kept (motd null). */
+    @Test
+    void aMotdItemThatIsNotTextKeepsTheDefaultAndSaysSo() {
+        for (Object badItem : new Object[] {"", 5}) {
+            Map<String, Object> map = new HashMap<>(YamlFiles.toMap(TestSupport.resourceYaml("chat.yml")));
+            map.put("motd", List.of("<gold>ok", badItem));
+            List<String> found = new ArrayList<>();
+            ChatSettings settings = ChatSettings.parse(map, found::add).orElseThrow();
+            assertNull(settings.motd());
+            assertEquals(List.of("chat.yml: every 'motd' line must be text; the default server-list text is kept"), found);
+        }
+    }
+
+    /**
+     * The rank cache is replaced as a whole on refresh, a player who left falls back to the default prefix, and a player
+     * not cached yet gets the default without a permission read on the chat thread (the proxy below fails on one).
+     */
+    @Test
+    void theRankCacheIsSwappedAndAMissNeverReadsPermissions() {
+        Map<String, Object> map = new HashMap<>(YamlFiles.toMap(TestSupport.resourceYaml("chat.yml")));
+        map.put("default-prefix", "<gray>guest ");
+        ChatSettings settings = ChatSettings.parse(map, problems::add).orElseThrow();
+        PermissionRankSource ranks = new PermissionRankSource(() -> settings);
+        FakePlayer steve = new FakePlayer("Steve", ADMIN);
+        FakePlayer alex = new FakePlayer("Alex", MEMBER);
+        ranks.refreshAll(List.of(steve.player));
+        assertEquals("ADMIN ", plain(ranks.prefix(steve.player)));
+        ranks.refreshAll(List.of(alex.player));
+        assertEquals("MEMBER ", plain(ranks.prefix(alex.player)));
+        assertEquals("guest ", plain(ranks.prefix(steve.player)), "a player who left the refresh does not keep the old rank");
+
+        Player unseen = (Player) Proxy.newProxyInstance(Player.class.getClassLoader(), new Class<?>[] {Player.class},
+                (proxy, method, args) -> switch (method.getName()) {
+                    case "hasPermission" -> throw new AssertionError("permission read on the chat thread");
+                    case "getUniqueId" -> UUID.randomUUID();
+                    default -> TestSupport.defaultValue(method.getReturnType());
+                });
+        assertEquals("guest ", plain(ranks.prefix(unseen)));
+    }
+
+    private static String plain(Optional<Component> prefix) {
+        return PlainTextComponentSerializer.plainText().serialize(prefix.orElseThrow());
     }
 }
