@@ -55,6 +55,17 @@ None blocking. Defaults decided by the orchestrator (overrule in review): Englis
 | sound event | `ui_confirm`, `ui_notify` (existing), `chat_message` (new vanilla fallback) | plugin-coder | `sounds.yml` |
 | dependency | `net.luckperms:api` | plugin-coder | `provided` scope, soft dependency already declared in `paper-plugin.yml`; version from the research note |
 
+## Decisions folded in from the research (`docs/research/core-chat-join-apis.md`)
+- Chat: set only `event.renderer(ChatRenderer.viewerUnaware(...))`, never `event.message(...)`; the player's message goes in with `Placeholder.component`, so `<red>hi` stays literal. `ChatListener` runs at HIGH with `ignoreCancelled = true` (`MuteListener` cancels at LOWEST). `ChatSettings` is a volatile immutable snapshot (the event is async); make sure `Messages` reads are safe from async threads.
+- `RankSource` returns a `Component`. LuckPerms prefixes are legacy `&` strings (`LegacyComponentSerializer.legacyAmpersand()`); `chat.yml` prefixes are MiniMessage. Use `UserManager#getUser(UUID)` (null if not loaded; never `loadUser().join()`, never `PlayerAdapter#getUser`) and fall back to `PermissionRankSource` on null/blank. The `net.luckperms` imports live only in `LuckPermsRankSource`, reached through a factory that checks `isPluginEnabled("LuckPerms")` and catches `LinkageError | RuntimeException`; add an architecture test that no other class references `net.luckperms`. `PermissionRankSource` on the async chat thread can read stale permission data (Bukkit `PermissibleBase` is not synchronized): follow the note's alternative (resolve the rank on the main thread at join/permission change and cache it, or read it in a main-thread step before the renderer runs).
+- `pom.xml`: `net.luckperms:api:5.5`, scope `provided`, no new repository (a human-review item).
+- Commands: `register(node, desc, List.of("tell","w","whisper","pm"))` takes over vanilla `msg`/`tell`/`w`; add `/reply` as alias of `/r`; at start-up warn for any of `msg tell w whisper pm r reply` that did not register. `minecraft:msg` stays vanilla. Add `pm`, `r`, `reply` to the `MuteListener` label set (and keep the in-command mute check).
+- Join/quit: `joinMessage(Component)` / `quitMessage(Component)` at HIGH, `null` = no line. First join is `Player#hasPlayedBefore()`, **not** `PlayerDirectory` (order-dependent).
+- Welcome title: `Title.title(t, s, fadeInTicks, stayTicks, fadeOutTicks)`; fade times in `chat.yml` as ticks.
+- MOTD: `PaperServerListPingEvent#motd(Component)` is async: no Bukkit API in the handler; `<online>` from `getNumPlayers()` (-1 if hidden), `<max>` from `getMaxPlayers()`.
+- PR text must say: replacing vanilla `/msg` makes private messages system messages, which cannot be reported by the client.
+- Unverified until tested in game: the chat report screen with rendered messages, `/minecraft:msg` staying vanilla, a title sent from inside `PlayerJoinEvent`, which of `whisper/pm/r/reply` are free on the real server.
+
 ## Tasks
 | Agent | Task | Needs (gate) | Branch |
 |---|---|---|---|
@@ -65,7 +76,7 @@ None blocking. Defaults decided by the orchestrator (overrule in review): Englis
 ## Status
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
-| resource-pack-researcher | planned | feature branch | n/a | |
+| resource-pack-researcher | done | feature branch | n/a | `docs/research/core-chat-join-apis.md` committed (one stalled run, resumed) |
 | plugin-coder | planned | `core-chat-join/plugin-coder` | | |
 | plugin-tester | planned | `core-chat-join/plugin-tester` | | |
 
