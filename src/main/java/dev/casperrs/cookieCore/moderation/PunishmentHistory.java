@@ -65,7 +65,8 @@ public final class PunishmentHistory {
         List<HistoryEntry> rows;
         try {
             // one row more than a page tells whether there is a next page
-            rows = store.history(target.uuid(), PAGE_SIZE + 1, (page - 1) * PAGE_SIZE);
+            int offset = (int) Math.min((page - 1L) * PAGE_SIZE, Integer.MAX_VALUE); // an int product would overflow to a negative offset
+            rows = store.history(target.uuid(), PAGE_SIZE + 1, offset);
         } catch (Exception failure) {
             log.log(Level.WARNING, "Could not read the history of " + target.name(), failure);
             handBack(() -> fail(sender, "moderation.error.failed"));

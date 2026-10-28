@@ -18,6 +18,7 @@ public final class MuteList {
 
     private final ConcurrentHashMap<UUID, MuteRecord> mutes = new ConcurrentHashMap<>();
     private volatile boolean loaded;
+    private volatile boolean loadFailed;
 
     /** Whether the start-up load has finished; until then chat is not blocked, since a mute is no security boundary. */
     public boolean loaded() {
@@ -26,6 +27,18 @@ public final class MuteList {
 
     public void markLoaded() {
         loaded = true;
+    }
+
+    /**
+     * True when the start-up load failed. The list is then incomplete and never marked loaded, so the chat is not blocked and
+     * the mute commands refuse to change it; a restart loads the mutes again.
+     */
+    public boolean loadFailed() {
+        return loadFailed;
+    }
+
+    public void markLoadFailed() {
+        loadFailed = true;
     }
 
     /** The start-up load: when the database holds two active mutes for one player the longer lasting wins. */

@@ -170,7 +170,7 @@ public final class ModerationService {
         if (reason.isEmpty()) {
             return 0;
         }
-        if (!storageUp.getAsBoolean()) {
+        if (!storageUp.getAsBoolean() || mutes.loadFailed()) {
             return fail(sender, "moderation.error.storage-down");
         }
         if (actor.is(target.uuid())) {
@@ -198,7 +198,7 @@ public final class ModerationService {
         if (reason.isEmpty()) {
             return 0;
         }
-        if (!storageUp.getAsBoolean()) {
+        if (!storageUp.getAsBoolean() || mutes.loadFailed()) {
             return fail(sender, "moderation.error.storage-down");
         }
         long now = clock.getAsLong();

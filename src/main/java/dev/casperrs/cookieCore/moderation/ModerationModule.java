@@ -39,7 +39,7 @@ public final class ModerationModule {
     private final PunishmentHistory history;
     private final ModerationListener listener;
     private final MuteListener muteListener;
-    /** False until the active bans and mutes are loaded: they cannot be changed meanwhile, same as with no database. */
+    /** False until the start-up loads have finished (bans loaded, mute load run): nothing can be changed meanwhile, same as with no database. */
     private volatile boolean usable;
     private final AtomicBoolean loading = new AtomicBoolean();
     /** Storage thread only. */
@@ -111,7 +111,10 @@ public final class ModerationModule {
         }
     }
 
-    /** A failed mute load only leaves chat unblocked (a mute is no security boundary); logins are not affected. */
+    /**
+     * A failed mute load leaves chat unblocked (a mute is no security boundary) and makes /mute, /tempmute and /unmute refuse
+     * until a restart, so no mute is recorded that the chat check could not see. Bans and logins are not affected.
+     */
     private void loadMutes() {
         try {
             List<MuteRecord> active = store.loadActiveMutes(clock.getAsLong());
@@ -119,7 +122,8 @@ public final class ModerationModule {
             mutes.markLoaded();
             log.info("Loaded " + active.size() + " active mute(s)");
         } catch (StorageException | RuntimeException e) {
-            log.log(Level.SEVERE, "Could not load the active mutes: muted players can chat until the next restart", e);
+            mutes.markLoadFailed();
+            log.log(Level.SEVERE, "Could not load the active mutes: muted players can chat and mute commands are refused until the next restart", e);
         }
     }
 
