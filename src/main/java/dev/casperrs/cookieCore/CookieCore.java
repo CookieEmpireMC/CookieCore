@@ -1,6 +1,7 @@
 package dev.casperrs.cookieCore;
 
 import dev.casperrs.cookieCore.api.CookieCoreApi;
+import dev.casperrs.cookieCore.chat.ChatModule;
 import dev.casperrs.cookieCore.config.ConfigLoader;
 import dev.casperrs.cookieCore.config.PluginSettings;
 import dev.casperrs.cookieCore.moderation.ModerationModule;
@@ -15,6 +16,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +57,7 @@ public final class CookieCore extends JavaPlugin {
     private CoreService api;
     private ScoreboardModule scoreboard;
     private ModerationModule moderation;
+    private @Nullable ChatModule chat;
 
     @Override
     public void onEnable() {
@@ -86,10 +89,18 @@ public final class CookieCore extends JavaPlugin {
         directory.start();
         moderation = new ModerationModule(getLogger(), new dev.casperrs.cookieCore.storage.JdbcPunishmentStore(store, getLogger()), io, this::runOnMainThread, messages, sounds, directory, System::currentTimeMillis);
         moderation.load(); // queued behind the migration on the storage thread; logins wait for it
+        if (settings.chatEnabled()) {
+            chat = new ChatModule(this, messages, sounds, moderation.mutes(), System::currentTimeMillis, this::runOnMainThread,
+                    this::repeatOnMainThread, () -> settings.serverName());
+            List<String> chatProblems = new ArrayList<>();
+            chat.loadConfig(chatProblems);
+            chatProblems.forEach(getLogger()::warning);
+            problems.addAll(chatProblems);
+        }
 
         // 4. listeners and 5. commands
         CoreWiring wiring = new CoreWiring(this, messages, sounds, directory, () -> settings, this::reload, this::runOnMainThread,
-                scoreboard, moderation);
+                scoreboard, moderation, chat);
         wiring.registerListeners();
         wiring.registerCommands();
 
@@ -106,6 +117,11 @@ public final class CookieCore extends JavaPlugin {
         safely("the sidebar", () -> {
             if (scoreboard != null) {
                 scoreboard.shutdown();
+            }
+        });
+        safely("the chat", () -> {
+            if (chat != null) {
+                chat.shutdown();
             }
         });
         safely("the public API", () -> {
@@ -137,11 +153,18 @@ public final class CookieCore extends JavaPlugin {
         if (!fresh.database().equals(settings.database())) {
             problems.add("database.* changed; restart the server to switch databases");
         }
+        if (fresh.chatEnabled() != (chat != null)) {
+            problems.add("chat.enabled changed; restart the server to apply it");
+        }
         settings = fresh.withDatabase(settings.database());
         loader.loadMessages(messages, problems);
         loader.loadSounds(sounds, problems);
         scoreboard.loadConfig(problems);
         scoreboard.apply();
+        if (chat != null) {
+            chat.loadConfig(problems);
+            chat.apply();
+        }
         problems.forEach(getLogger()::warning);
         return problems;
     }

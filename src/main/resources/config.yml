@@ -10,6 +10,11 @@ scoreboard:
   # The sidebar for every player; its lines are in scoreboard.yml. Players can hide it with /scoreboard toggle.
   enabled: true
 
+chat:
+  # The chat layer: chat format and ranks, join/quit lines, welcome, server-list MOTD, /msg, /r and /sc (all set in chat.yml).
+  # Restart the server to change it.
+  enabled: true
+
 database:
   # h2 (embedded file, no setup) or mariadb
   type: h2

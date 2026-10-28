@@ -21,6 +21,7 @@ import org.bukkit.entity.Player;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Predicate;
 
 /**
@@ -118,6 +119,15 @@ public final class CommandKit {
 
     public static String reason(CommandContext<CommandSourceStack> ctx, String name) {
         return StringArgumentType.getString(ctx, name);
+    }
+
+    /** Adds to {@code missing} each of the {@code wanted} labels that {@code registered} (the result of {@code Commands.register}) lacks. */
+    public static void collectMissing(Set<String> registered, List<String> missing, String... wanted) {
+        for (String label : wanted) {
+            if (!registered.contains(label)) {
+                missing.add(label);
+            }
+        }
     }
 
     // --- replies -------------------------------------------------------------------------------------------------

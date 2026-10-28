@@ -1,5 +1,6 @@
 package dev.casperrs.cookieCore;
 
+import dev.casperrs.cookieCore.chat.ChatModule;
 import dev.casperrs.cookieCore.command.CommandKit;
 import dev.casperrs.cookieCore.command.CookieCoreCommand;
 import dev.casperrs.cookieCore.command.ScoreboardCommand;
@@ -17,6 +18,7 @@ import dev.casperrs.cookieCore.text.Messages;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -33,12 +35,13 @@ final class CoreWiring {
     private final CookieCoreCommand.Reloader reloader;
     private final ScoreboardModule scoreboard;
     private final ModerationModule moderation;
+    private final @Nullable ChatModule chat;
     private final FlyTracker flyTracker;
 
-    /** {@code main} runs a task on the main thread. */
+    /** {@code main} runs a task on the main thread; {@code chat} is null when {@code chat.enabled} is false. */
     CoreWiring(JavaPlugin plugin, Messages messages, SoundService sounds, PlayerDirectory directory,
                Supplier<PluginSettings> settings, CookieCoreCommand.Reloader reloader, Consumer<Runnable> main,
-               ScoreboardModule scoreboard, ModerationModule moderation) {
+               ScoreboardModule scoreboard, ModerationModule moderation, @Nullable ChatModule chat) {
         this.plugin = plugin;
         this.messages = messages;
         this.sounds = sounds;
@@ -47,6 +50,7 @@ final class CoreWiring {
         this.reloader = reloader;
         this.scoreboard = scoreboard;
         this.moderation = moderation;
+        this.chat = chat;
         this.flyTracker = new FlyTracker(main);
     }
 
@@ -59,6 +63,11 @@ final class CoreWiring {
         plugins.registerEvents(scoreboard.listener(), plugin);
         scoreboard.apply();
         plugins.registerEvents(flyTracker, plugin);
+        if (chat != null) {
+            chat.listeners().forEach(listener -> plugins.registerEvents(listener, plugin));
+            moderation.exemptFromChatMute(chat::staffChannelActive);
+            chat.apply();
+        }
     }
 
     void registerCommands() {
@@ -76,6 +85,9 @@ final class CoreWiring {
             event.registrar().register(fly.node(), "Toggle flight");
             event.registrar().register(speed.node(), "Change walking or flying speed");
             moderation.register(event.registrar(), kit);
+            if (chat != null) {
+                chat.register(event.registrar(), kit);
+            }
         });
     }
 }

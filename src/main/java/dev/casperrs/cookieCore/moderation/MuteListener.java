@@ -15,23 +15,31 @@ import java.time.Duration;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.LongSupplier;
+import java.util.function.Predicate;
 
 /** Cancels the chat and the whisper commands of muted players. Memory only, no database, no thread hop. */
 public final class MuteListener implements Listener {
 
-    private static final Set<String> WHISPER_LABELS = Set.of("msg", "tell", "w", "whisper", "me");
+    private static final Set<String> WHISPER_LABELS = Set.of("msg", "tell", "w", "whisper", "pm", "r", "reply", "me");
 
     private final MuteList mutes;
     private final Messages messages;
     private final LongSupplier clock;
     private final WarnOnce warnOnce;
+    private volatile Predicate<UUID> chatExemption = player -> false;
 
     public MuteListener(MuteList mutes, Messages messages, LongSupplier clock, WarnOnce warnOnce) {
         this.mutes = mutes;
         this.messages = messages;
         this.clock = clock;
         this.warnOnce = warnOnce;
+    }
+
+    /** Muted players for whom {@code exempt} is true are not stopped in public chat; asked on the chat thread. */
+    public void exemptFromChatMute(Predicate<UUID> exempt) {
+        chatExemption = exempt;
     }
 
     /**
@@ -72,7 +80,7 @@ public final class MuteListener implements Listener {
         }
         long now = clock.getAsLong();
         Optional<MuteRecord> mute = mutes.active(event.getPlayer().getUniqueId(), now);
-        if (mute.isEmpty()) {
+        if (mute.isEmpty() || chatExemption.test(event.getPlayer().getUniqueId())) {
             return;
         }
         event.setCancelled(true);

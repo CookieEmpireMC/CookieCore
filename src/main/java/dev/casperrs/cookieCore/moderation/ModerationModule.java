@@ -16,11 +16,12 @@ import org.bukkit.event.Listener;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongSupplier;
+import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -67,6 +68,16 @@ public final class ModerationModule {
 
     public Listener muteListener() {
         return muteListener;
+    }
+
+    /** The active mutes in memory, for modules that only read them. */
+    public MuteList mutes() {
+        return mutes;
+    }
+
+    /** Players for whom {@code exempt} is true may chat while muted (their chat goes to the staff channel, which a mute does not block). */
+    public void exemptFromChatMute(Predicate<UUID> exempt) {
+        muteListener.exemptFromChatMute(exempt);
     }
 
     /**
@@ -131,28 +142,20 @@ public final class ModerationModule {
     public void register(Commands commands, CommandKit kit) {
         BannedPlayerArgument bannedPlayer = new BannedPlayerArgument(new KnownPlayerArgument(directory, messages), bans, clock);
         List<String> missing = new ArrayList<>();
-        check(commands.register(new KickCommand(kit, service).node(), "Kick a player"), missing, "kick");
-        check(commands.register(new BanCommand(kit, service).node(), "Ban a player"), missing, "ban");
-        check(commands.register(new TempbanCommand(kit, service).node(), "Ban a player for a while"), missing, "tempban");
-        check(commands.register(new UnbanCommand(kit, service, bannedPlayer).node(), "Unban a player", List.of("pardon")),
+        CommandKit.collectMissing(commands.register(new KickCommand(kit, service).node(), "Kick a player"), missing, "kick");
+        CommandKit.collectMissing(commands.register(new BanCommand(kit, service).node(), "Ban a player"), missing, "ban");
+        CommandKit.collectMissing(commands.register(new TempbanCommand(kit, service).node(), "Ban a player for a while"), missing, "tempban");
+        CommandKit.collectMissing(commands.register(new UnbanCommand(kit, service, bannedPlayer).node(), "Unban a player", List.of("pardon")),
                 missing, "unban", "pardon");
         MutedPlayerArgument mutedPlayer = new MutedPlayerArgument(new KnownPlayerArgument(directory, messages), mutes, clock);
-        check(commands.register(new MuteCommand(kit, service).node(), "Mute a player"), missing, "mute");
-        check(commands.register(new TempmuteCommand(kit, service).node(), "Mute a player for a while"), missing, "tempmute");
-        check(commands.register(new UnmuteCommand(kit, service, mutedPlayer).node(), "Unmute a player"), missing, "unmute");
-        check(commands.register(new WarnCommand(kit, service).node(), "Warn a player"), missing, "warn");
-        check(commands.register(new HistoryCommand(kit, history).node(), "Show the punishments of a player"), missing, "history");
+        CommandKit.collectMissing(commands.register(new MuteCommand(kit, service).node(), "Mute a player"), missing, "mute");
+        CommandKit.collectMissing(commands.register(new TempmuteCommand(kit, service).node(), "Mute a player for a while"), missing, "tempmute");
+        CommandKit.collectMissing(commands.register(new UnmuteCommand(kit, service, mutedPlayer).node(), "Unmute a player"), missing, "unmute");
+        CommandKit.collectMissing(commands.register(new WarnCommand(kit, service).node(), "Warn a player"), missing, "warn");
+        CommandKit.collectMissing(commands.register(new HistoryCommand(kit, history).node(), "Show the punishments of a player"), missing, "history");
         if (!missing.isEmpty()) {
             log.warning("Could not take over /" + String.join(", /", missing)
                     + " (another plugin owns it); the namespaced cookiecore:<command> still works");
-        }
-    }
-
-    private static void check(Set<String> registered, List<String> missing, String... wanted) {
-        for (String label : wanted) {
-            if (!registered.contains(label)) {
-                missing.add(label);
-            }
         }
     }
 }

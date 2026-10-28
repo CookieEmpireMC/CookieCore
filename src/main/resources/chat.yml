@@ -1,0 +1,39 @@
+# CookieCore chat. MiniMessage: https://docs.advntr.dev/minimessage/format.html
+# Apply changes with /cookiecore reload. A broken file keeps the previous values and the reload report says what is wrong.
+# The chat on/off switch is "chat.enabled" in config.yml; join, quit, welcome and private-message texts are in messages.yml.
+
+# One public chat line. Placeholders: <rank_prefix> <player> <message> <server>
+# <message> must be present. What players type is shown as typed, never read as MiniMessage.
+format: "<rank_prefix><white><player></white><dark_gray> »</dark_gray> <gray><message></gray>"
+
+# One staff-channel line (/sc). Same placeholders.
+staff-format: "<dark_gray>[<red>Staff</red>]</dark_gray> <rank_prefix><white><player></white><dark_gray> »</dark_gray> <aqua><message></aqua>"
+
+# Prefix for players without a rank below. Empty = none.
+default-prefix: ""
+
+# The first permission a player has wins, so put the highest rank first. They do nothing until you grant them
+# (for example cookiecore.rank.admin) in your permissions plugin. When LuckPerms has a prefix for the player, that is used instead.
+# Keep a space at the end of a prefix to separate it from the name.
+ranks:
+  - permission: cookiecore.rank.owner
+    prefix: "<dark_red><bold>OWNER</bold></dark_red> "
+  - permission: cookiecore.rank.admin
+    prefix: "<red><bold>ADMIN</bold></red> "
+  - permission: cookiecore.rank.mod
+    prefix: "<blue><bold>MOD</bold></blue> "
+  - permission: cookiecore.rank.helper
+    prefix: "<aqua>HELPER</aqua> "
+  - permission: cookiecore.rank.member
+    prefix: "<green>MEMBER</green> "
+
+# The two lines in the server list. Placeholders: <server> <online> <max>. Remove the key to keep the default text.
+motd:
+  - "<gold><bold><server></bold></gold> <gray>- an idle clicker you play in the world</gray>"
+  - "<yellow><online>/<max></yellow> <gray>bakers online</gray>"
+
+# Fade times of the welcome title, in ticks (20 ticks = 1 second). The texts are welcome-* in messages.yml.
+welcome:
+  fade-in: 10
+  stay: 70
+  fade-out: 20

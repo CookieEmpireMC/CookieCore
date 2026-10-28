@@ -32,11 +32,18 @@ public final class Perm {
     public static final String STAFF_HISTORY = "cookiecore.staff.history";
     /** Sees the alerts of silent ({@code -s}) actions. */
     public static final String STAFF_NOTIFY = "cookiecore.staff.notify";
+    /** Reads and writes in the staff channel ({@code /sc}). */
+    public static final String STAFF_CHAT = "cookiecore.staff.chat";
+    /** Joins and quits without a message. Default false. */
+    public static final String CHAT_SILENTJOIN = "cookiecore.chat.silentjoin";
+    /** Private messages ({@code /msg}, {@code /r}). Default true, so a group can be denied it. */
+    public static final String CHAT_MSG = "cookiecore.chat.msg";
 
     /** Every node above; used by tests to keep {@code paper-plugin.yml} in sync. */
     public static final List<String> ALL = List.of(ADMIN_VERSION, ADMIN_RELOAD, SCOREBOARD_TOGGLE,
             GAMEMODE_SURVIVAL, GAMEMODE_CREATIVE, GAMEMODE_ADVENTURE, GAMEMODE_SPECTATOR, GAMEMODE_OTHERS,
-            FLY, FLY_OTHERS, SPEED, SPEED_OTHERS, STAFF_KICK, STAFF_BAN, STAFF_UNBAN, STAFF_MUTE, STAFF_UNMUTE, STAFF_WARN, STAFF_HISTORY, STAFF_NOTIFY);
+            FLY, FLY_OTHERS, SPEED, SPEED_OTHERS, STAFF_KICK, STAFF_BAN, STAFF_UNBAN, STAFF_MUTE, STAFF_UNMUTE, STAFF_WARN, STAFF_HISTORY, STAFF_NOTIFY,
+            STAFF_CHAT, CHAT_SILENTJOIN, CHAT_MSG);
 
     private Perm() {
     }
