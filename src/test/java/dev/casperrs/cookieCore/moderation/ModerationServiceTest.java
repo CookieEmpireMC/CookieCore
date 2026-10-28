@@ -10,6 +10,7 @@ import dev.casperrs.cookieCore.moderation.ModerationFixture.TestPlayer;
 import dev.casperrs.cookieCore.storage.BanRecord;
 import dev.casperrs.cookieCore.storage.PunishmentStore;
 import dev.casperrs.cookieCore.storage.StorageException;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -147,5 +148,34 @@ class ModerationServiceTest {
         public int deactivateBans(UUID target, UUID byUuid, String byName, String reason, long now) throws StorageException {
             return real.deactivateBans(target, byUuid, byName, reason, now);
         }
+    }
+
+    /** A mute is written first and only then takes effect: a failed write leaves the mute list and the target's chat alone. */
+    @Test
+    void aFailedMuteWriteChangesNothing() throws Exception {
+        TestPlayer alex = f.player("Alex", Perm.STAFF_MUTE);
+        TestPlayer steve = f.player("Steve");
+        f.service(ModerationFixture.failingInserts(f.store)).mute(alex.player, f.ref(steve), null, false, "spam");
+
+        assertTrue(f.mutes.active(steve.id, f.now).isEmpty());
+        assertTrue(alex.rec.lastPlain().contains("could not be saved"), alex.rec.lastPlain());
+    }
+
+    /** A round trip stores and clears the mute; self, already muted and not muted are refused without a change. */
+    @Test
+    void muteAndUnmuteRoundTripAndRefuseTheImpossible() throws Exception {
+        TestPlayer alex = f.player("Alex", Perm.STAFF_MUTE, Perm.STAFF_UNMUTE);
+        TestPlayer steve = f.player("Steve");
+        assertEquals(0, f.service.mute(alex.player, f.ref(alex), null, false, "spam"), "self");
+        assertEquals(0, f.service.unmute(alex.player, f.ref(steve), false, null), "not muted");
+
+        assertEquals(1, f.service.mute(alex.player, f.ref(steve), Duration.ofHours(1), false, "spam"));
+        assertTrue(f.mutes.active(steve.id, f.now).isPresent());
+        assertEquals(1, f.store.loadActiveMutes(f.now).size());
+        assertEquals(0, f.service.mute(alex.player, f.ref(steve), null, false, "again"), "already muted");
+
+        assertEquals(1, f.service.unmute(alex.player, f.ref(steve), false, "appealed"));
+        assertTrue(f.mutes.active(steve.id, f.now).isEmpty());
+        assertTrue(f.store.loadActiveMutes(f.now).isEmpty());
     }
 }

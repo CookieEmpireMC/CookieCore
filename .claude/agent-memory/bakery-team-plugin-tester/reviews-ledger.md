@@ -4,6 +4,12 @@ description: Per reviewed area, the commit verified and what passed; re-review o
 metadata:
   type: project
 ---
+## CookieCore `core-moderation-mutes` slice 1 (2026-10-28), VERDICT READY
+Review doc: `docs/reviews/2026-10-28-core-moderation-mutes.md`. Coder code verified at `468182e`; tester commits `78a5dcb` (tests), `ce3060f` (review, architecture). Suite 213 run, 0 failed, 1 skipped; `mise run check` BUILD SUCCESS.
+Areas: `moderation/MuteList`, `MuteListener`, `ModerationService` mute/unmute, `ModerationModule` mute load, `JdbcPlayerStore` loadActive/deactivate refactor (ban SQL unchanged), `PunishmentStore` defaults, `paper-plugin.yml` mute nodes.
+Open LOW (PR follow-ups): LOW-1 `/mute` can double-insert in the window between `usable=true` and `loadMutes()` (`ModerationModule`), LOW-2 unused 10-arg `ModerationService` constructor, LOW-3 expired mutes stay in `MuteList`, LOW-4 `MuteRecord.of(BanRecord)` coupling and default store methods.
+Next re-review: `git diff 468182e..HEAD -- src/main` for the coder's fixes.
+
 ## CookieCore `core-moderation-bans` (2026-10-27), round 2 VERDICT READY (conditional on Rick's boot-outage decision)
 Round 2 reviewed `git diff 2531cd6..HEAD -- src/main` (coder `d52a5a5`, `c451740`): ModerationModule fail-closed load (one in flight, flag cleared in finally and on rejection, usable/loaded volatile order), ModerationListener retryLoad + L-5, ModerationService background/finish (busy in finally, Error rethrown), messages.yml key removal, CommandKit Javadoc. Tests +2 (`ModerationModuleTest`, Error case in `ModerationServiceTest`): 205 run, 0 failed. Open: `storageAvailable()==false` at boot still opens logins (residual of M-1, Rick to confirm); R2-L1 kick during failed load says 'database not available'; R2-L2 retry attempts serialise on the IO thread (PERF-LOW). Next re-review: `git diff <coder commit after c451740>..HEAD -- src/main`.
 

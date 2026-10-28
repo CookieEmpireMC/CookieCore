@@ -10,6 +10,7 @@ import dev.casperrs.cookieCore.TestSupport;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import org.junit.jupiter.api.Test;
@@ -201,5 +202,22 @@ class JdbcPlayerStoreTest {
                 + "expires_at, silent, active) VALUES ('BAN', 'not-a-uuid', 'Bad', NULL, 'Console', 'x', 1, NULL, FALSE, TRUE)");
         assertEquals(List.of(b), store.loadActiveBans(0).stream().map(BanRecord::targetUuid).toList());
         assertTrue(log.messages().stream().anyMatch(m -> m.contains("Skipped 1 row(s) in core_punishments")), log.messages().toString());
+    }
+
+    /** Mutes and bans load and undo separately: an expired mute is not loaded, and undoing a mute keeps the ban. */
+    @Test
+    void mutesLoadAndUndoSeparatelyFromBans() throws Exception {
+        store.init();
+        store.insert(new NewPunishment(PunishmentType.BAN, a, "Alice", null, "Console", "ban", 100, null, false));
+        store.insert(new NewPunishment(PunishmentType.MUTE, a, "Alice", null, "Console", "expired", 100, 500L, false));
+        store.insert(new NewPunishment(PunishmentType.MUTE, a, "Alice", null, "Console", "perm", 200, null, false));
+        store.insert(new NewPunishment(PunishmentType.MUTE, b, "Bob", null, "Console", "perm", 200, null, false));
+        List<MuteRecord> mutes = store.loadActiveMutes(1_000);
+        assertEquals(2, mutes.size());
+        assertEquals(Set.of(a, b), Set.copyOf(mutes.stream().map(MuteRecord::targetUuid).toList()));
+
+        assertEquals(2, store.deactivateMutes(a, UUID.randomUUID(), "Alex", "appealed", 1_000), "the expired row counts too, like an unban");
+        assertEquals(List.of(b), store.loadActiveMutes(1_000).stream().map(MuteRecord::targetUuid).toList());
+        assertEquals(List.of(a), store.loadActiveBans(1_000).stream().map(BanRecord::targetUuid).toList());
     }
 }

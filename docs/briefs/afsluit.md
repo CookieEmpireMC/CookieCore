@@ -1,9 +1,9 @@
-# Afsluit: stand van zaken (bijgewerkt 2026-10-27, na de merge van PR #6 en #7)
+# Afsluit: stand van zaken (bijgewerkt 2026-10-28, na de merge van PR #9; 4b plak 1 staat open als PR)
 
 Overdracht voor de volgende sessie. Lees eerst dit bestand, daarna `docs/briefs/ROADMAP.md`.
 
 ## Waar staan we
-`main` bevat alles tot en met fase 3. Alle PR's zijn door Luuk gemerged.
+`main` bevat alles tot en met fase 4a. Alle PR's zijn door Luuk gemerged. Daarbovenop staat de eerste plak van 4b (`/mute`, `/tempmute`, `/unmute`) als open PR op `feature/core-moderation-mutes`.
 
 | Stap | PR | Inhoud |
 |---|---|---|
@@ -11,10 +11,13 @@ Overdracht voor de volgende sessie. Lees eerst dit bestand, daarna `docs/briefs/
 | Stap A `core-tidy` | #5 | opgelijnd met de CookieMemory-regels, `paper-plugin.yml`, schonere tests |
 | Fase 2 `core-scoreboard` | #7 | sidebar per speler, placeholder-API, `/scoreboard toggle`, opslag v2 |
 | Fase 3 `core-gamemode` | #6 | `/gamemode` `/gm` `/gms` `/gmc` `/gma` `/gmsp`, `/fly`, `/speed` |
+| Fase 4a `core-moderation-bans` | #9 | `/kick` `/ban` `/tempban` `/unban`, banscherm, staff-melding, auditlog (`punishments`, opslag v3) |
+| Fase 4b plak 1 `core-moderation-mutes` | open PR | `/mute` `/tempmute` `/unmute`, chat geblokkeerd, overleeft herstart |
 
-- `mise run check` op `main`: 183 tests, 0 mislukt, 1 bewust overgeslagen (scoreboard L-4).
+- `mise run check` op `main`: 205 tests (213 op de mutes-branch), 0 mislukt, 1 bewust overgeslagen (scoreboard L-4).
 - Fase 1 (tab) is door Luuk overgeslagen.
-- **Volgende:** fase 4a `core-moderation-bans`, daarna 4b `core-moderation-mutes` (niet parallel: ze delen de database en de duurparser). Start pas na Luuks "go". Open vraag 4 uit de roadmap: permissies per commando (`cookiecore.staff.kick`, `.ban`, standaard op); neem dat aan tenzij Luuk anders zegt.
+- **4b is in plakken gebouwd.** Plak 1 (mutes) is klaar. **Nog te doen in 4b:** `/warn`, `/history <speler>`, melding als een tempmute afloopt, vanilla `/msg` `/tell` `/w` blokkeren voor gemute spelers (of wachten op fase 5 met eigen `/msg`). Daarna fase 5. Start pas na Luuks "go"; hij draait `/bakery-team:feature` zelf.
+- Bij 4b plak 2 eerst `JdbcPlayerStore` (~310 regels, drie stores) splitsen, anders wordt hij te groot.
 
 ## Voor Luuk (niet door een agent te doen)
 - **In-game test op een Paper 26.3-server** (nog niets is door een echte server gehaald):
@@ -34,7 +37,8 @@ Overdracht voor de volgende sessie. Lees eerst dit bestand, daarna `docs/briefs/
 - **Scoreboard:** L-4 (`scoreboard.yml` Online-regel laat `<gray>` open; eenregelige fix staat in de PR #7, daarna `@Disabled` weghalen in `ScoreboardLayoutTest`), L-2 (toggle in het laadvenster kan de keuze omdraaien), L-3 (placeholder met de naam van een MiniMessage-tag), L-5 (typefouten in `scoreboard.yml` niet gemeld), L-6, L-7, PERF-LOW-1 (alle regels opnieuw renderen bij één wijziging).
 - **Gamemode:** `FlyTracker` gebruikt het verouderde `Player#isOnGround()`; een foute modus of `/speed`-getal is een parse-fout zonder `ui_error`; registratie van `/fly` en `/speed` wordt niet gecontroleerd; commando-omschrijvingen zijn Engelse literals; `/fly`-intrekking wordt pas bij de volgende modus-wissel gezien; bij uitzetten in de lucht volgt valschade.
 - **Uit core-tidy:** `PluginSettings.intOrDefault` (`3308.5` wordt stil `3308`), Javadoc in `CookieCoreApi` noemt nog `softdepend`, lege `cookiecore-libraries.properties` geeft stil nul libraries, null-scope bij `Dependency` (onbevestigd tot de eerste Paper-start).
-- Idee: één kleine "polish"-run (coder + tester) voor bovenstaande LOW's vóór of na 4a.
+- **Moderatie (4a):** zie `docs/reviews/2026-10-27-core-moderation-bans.md` sectie 6 (in-game, ook een v2-database en een MariaDB-controle met de hand). **Mutes:** `docs/reviews/2026-10-28-core-moderation-mutes.md`.
+- Idee: één kleine "polish"-run (coder + tester) voor bovenstaande LOW's.
 
 ## Tooling en omgeving
 - `mise` werkt (pad `%LOCALAPPDATA%\Microsoft\WinGet\Packages\jdx.mise_Microsoft.Winget.Source_8wekyb3d8bbwe\mise\bin\mise.exe` als het niet op PATH staat). Eerder blokkeerde Windows Application Control `mise.exe` tijdelijk; zo ja, Maven direct draaien (JDK/Maven onder `%LOCALAPPDATA%\mise\installs`).
@@ -53,4 +57,4 @@ Overdracht voor de volgende sessie. Lees eerst dit bestand, daarna `docs/briefs/
 ## Eerste stappen volgende sessie
 1. `git status`, `git fetch`; staat de docs-PR (`feature/docs-afsluit`) al in `main`? Zo ja: `git switch main && git pull`, lokale `feature/docs-afsluit` verwijderen.
 2. Vraag Luuk naar de uitkomst van de in-game test (vooral het scoreboard); bij een rendering-probleem eerst de Teams-fallback.
-3. Bij Luuks "go": `/bakery-team:feature core-moderation-bans ...` (4a). Tijdschatting 2 tot 3 uur, zwaarder in tokens dan gamemode (database, auditlog, review en fixronde).
+3. Bij Luuks "go": `/bakery-team:feature core-moderation-mutes-2 ...` voor de rest van 4b (`/warn`, `/history`, verloopmelding). Splits eerst `JdbcPlayerStore`. LOW-1 en LOW-2 van de mutes-review (`docs/reviews/2026-10-28-core-moderation-mutes.md`) kunnen mee.
