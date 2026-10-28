@@ -26,7 +26,14 @@
 - https://h2database.com/html/advanced.html (keywords list), https://mariadb.com/kb/en/reserved-words/, .../create-index/ | type/active/silent/reason unreserved on both; CREATE INDEX IF NOT EXISTS both | 2026-10-27 | stable
 - LuckPerms common/src/main/resources/me/lucko/luckperms/schema/{h2,mariadb}.sql | AUTO_INCREMENT + CREATE INDEX shape that runs on both | 2026-10-27 | stable
 
+- https://jd.papermc.io/paper/26.3/{io/papermc/paper/event/player/AsyncChatEvent,io/papermc/paper/chat/ChatRenderer,org/bukkit/event/player/PlayerJoinEvent,PlayerQuitEvent,com/destroystokyo/paper/event/server/PaperServerListPingEvent,org/bukkit/plugin/ServicesManager}.html | signatures in chat-join note | 2026-10-28 | stable
+- raw.githubusercontent.com/PaperMC/Paper/main/paper-server/src/main/java/io/papermc/paper/adventure/ChatProcessor.java | renderer keeps original signature, paper:raw chat type | 2026-10-28 | stable-ish
+- raw.githubusercontent.com/LuckPerms/LuckPerms/master/api/src/main/java/net/luckperms/api/{LuckPerms,model/user/UserManager,cacheddata/CachedMetaData}.java , bukkit/listeners/BukkitConnectionListener.java | getUser null, getPrefix nullable, user loaded at pre-login LOW, unloaded at quit MONITOR | 2026-10-28 | stable
+- https://repo1.maven.org/maven2/net/luckperms/api/maven-metadata.xml | latest 5.5 (2025-05-25) | 2026-10-28 | volatile
+- https://minecraft.wiki/w/Commands/msg | aliases tell, w only | 2026-10-28 | stable
+
 ## Dead ends / tips
+- 404: docs.papermc.io/paper/dev/breaking-changes/, docs.papermc.io/adventure/chat-decoration/, LuckPerms/wiki raw, LuckPerms/api README. ChatProcessor raw: ask targeted questions, it is big.
 - mariadb-connector-j raw Statement.java / ClientPreparedStatement.java paths 404 (any branch); only Jira tickets (CONJ-953/957) found for getGeneratedKeys. h2database.com/html/grammar.html lacks AUTO_INCREMENT (use Mode.java).
 - Paper *.java.patch files are 170k chars; the WebFetch summarizer reads only the first 100k per window, but targeted prompts on ServerCommonPacketListenerImpl/PlayerList/ServerLoginPacketListenerImpl patches worked.
 - Adventure MiniMessage Javadoc says nothing on thread safety.

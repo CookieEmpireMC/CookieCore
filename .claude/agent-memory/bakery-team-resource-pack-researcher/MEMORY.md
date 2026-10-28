@@ -1,4 +1,5 @@
 - [Source cache](sources.md) — URLs already checked, dead ends, fetch tips (read before any WebFetch)
 - [Paper 26.3 Core APIs](paper-26-3-core-apis.md) — commands, login, chat, tab/scoreboard, LuckPerms facts + unverified list
 - [Moderation facts](paper-26-3-moderation-facts.md) — pre-login thread, kick/quit flow, alias override, -s literal, H2+MariaDB DDL
+- [Chat/join facts](paper-26-3-chat-join.md) — renderer/signing, LuckPerms 5.5 API, msg override labels, MOTD async, hasPlayedBefore
 - [Gamemode + sidebar facts](paper-26-3-gamemode-scoreboard.md) — gameMode() arg, command override, fly/speed, Score#customName, setScoreboard
