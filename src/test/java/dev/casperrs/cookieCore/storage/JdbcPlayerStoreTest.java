@@ -20,6 +20,7 @@ class JdbcPlayerStoreTest {
     private final H2 db = new H2();
     private final TestSupport.LogCapture log = new TestSupport.LogCapture();
     private final JdbcPlayerStore store = new JdbcPlayerStore(db.factory(), "core_", log.logger);
+    private final JdbcPunishmentStore punishments = new JdbcPunishmentStore(store, log.logger);
     private final UUID a = UUID.fromString("00000000-0000-0000-0000-00000000000a");
     private final UUID b = UUID.fromString("00000000-0000-0000-0000-00000000000b");
 
@@ -170,11 +171,11 @@ class JdbcPlayerStoreTest {
         store.init();
         UUID staff = UUID.randomUUID();
         UUID c = UUID.randomUUID();
-        long kick = store.insert(new NewPunishment(PunishmentType.KICK, a, "Alice", null, "Console", "spam", 100, null, true));
-        long ban = store.insert(new NewPunishment(PunishmentType.BAN, b, "Bob", staff, "Alex", "griefing", 200, null, false));
-        long tempban = store.insert(new NewPunishment(PunishmentType.BAN, c, "Carl", staff, "Alex", "spam", 300, 5_000L, false));
+        long kick = punishments.insert(new NewPunishment(PunishmentType.KICK, a, "Alice", null, "Console", "spam", 100, null, true));
+        long ban = punishments.insert(new NewPunishment(PunishmentType.BAN, b, "Bob", staff, "Alex", "griefing", 200, null, false));
+        long tempban = punishments.insert(new NewPunishment(PunishmentType.BAN, c, "Carl", staff, "Alex", "spam", 300, 5_000L, false));
         assertTrue(kick < ban && ban < tempban, "ids are generated in order");
-        List<BanRecord> active = store.loadActiveBans(1_000);
+        List<BanRecord> active = punishments.loadActiveBans(1_000);
         assertEquals(List.of(ban, tempban), active.stream().map(BanRecord::id).toList());
         assertNull(active.getFirst().expiresAt());
         assertEquals(Long.valueOf(5_000L), active.getLast().expiresAt());
@@ -185,11 +186,11 @@ class JdbcPlayerStoreTest {
     @Test
     void unbanDeactivatesEveryActiveRowOfThePlayerAndRecordsWhoDidIt() throws Exception {
         store.init();
-        store.insert(new NewPunishment(PunishmentType.BAN, a, "Alice", null, "Console", "old", 100, 500L, false));
-        store.insert(new NewPunishment(PunishmentType.BAN, a, "Alice", null, "Console", "perm", 200, null, false));
-        store.insert(new NewPunishment(PunishmentType.BAN, b, "Bob", null, "Console", "perm", 200, null, false));
-        assertEquals(2, store.deactivateBans(a, UUID.randomUUID(), "Alex", "appealed", 1_000));
-        assertEquals(List.of(b), store.loadActiveBans(1_000).stream().map(BanRecord::targetUuid).toList());
+        punishments.insert(new NewPunishment(PunishmentType.BAN, a, "Alice", null, "Console", "old", 100, 500L, false));
+        punishments.insert(new NewPunishment(PunishmentType.BAN, a, "Alice", null, "Console", "perm", 200, null, false));
+        punishments.insert(new NewPunishment(PunishmentType.BAN, b, "Bob", null, "Console", "perm", 200, null, false));
+        assertEquals(2, punishments.deactivateBans(a, UUID.randomUUID(), "Alex", "appealed", 1_000));
+        assertEquals(List.of(b), punishments.loadActiveBans(1_000).stream().map(BanRecord::targetUuid).toList());
         assertEquals(2, db.count("core_punishments WHERE removed_by_name = 'Alex' AND removed_at = 1000"));
     }
 
@@ -197,10 +198,10 @@ class JdbcPlayerStoreTest {
     @Test
     void aCorruptPunishmentRowIsSkippedAndTheOthersLoad() throws Exception {
         store.init();
-        store.insert(new NewPunishment(PunishmentType.BAN, b, "Bob", null, "Console", "ok", 1, null, false));
+        punishments.insert(new NewPunishment(PunishmentType.BAN, b, "Bob", null, "Console", "ok", 1, null, false));
         db.execute("INSERT INTO core_punishments (type, target_uuid, target_name, actor_uuid, actor_name, reason, created_at, "
                 + "expires_at, silent, active) VALUES ('BAN', 'not-a-uuid', 'Bad', NULL, 'Console', 'x', 1, NULL, FALSE, TRUE)");
-        assertEquals(List.of(b), store.loadActiveBans(0).stream().map(BanRecord::targetUuid).toList());
+        assertEquals(List.of(b), punishments.loadActiveBans(0).stream().map(BanRecord::targetUuid).toList());
         assertTrue(log.messages().stream().anyMatch(m -> m.contains("Skipped 1 row(s) in core_punishments")), log.messages().toString());
     }
 
@@ -208,16 +209,16 @@ class JdbcPlayerStoreTest {
     @Test
     void mutesLoadAndUndoSeparatelyFromBans() throws Exception {
         store.init();
-        store.insert(new NewPunishment(PunishmentType.BAN, a, "Alice", null, "Console", "ban", 100, null, false));
-        store.insert(new NewPunishment(PunishmentType.MUTE, a, "Alice", null, "Console", "expired", 100, 500L, false));
-        store.insert(new NewPunishment(PunishmentType.MUTE, a, "Alice", null, "Console", "perm", 200, null, false));
-        store.insert(new NewPunishment(PunishmentType.MUTE, b, "Bob", null, "Console", "perm", 200, null, false));
-        List<MuteRecord> mutes = store.loadActiveMutes(1_000);
+        punishments.insert(new NewPunishment(PunishmentType.BAN, a, "Alice", null, "Console", "ban", 100, null, false));
+        punishments.insert(new NewPunishment(PunishmentType.MUTE, a, "Alice", null, "Console", "expired", 100, 500L, false));
+        punishments.insert(new NewPunishment(PunishmentType.MUTE, a, "Alice", null, "Console", "perm", 200, null, false));
+        punishments.insert(new NewPunishment(PunishmentType.MUTE, b, "Bob", null, "Console", "perm", 200, null, false));
+        List<MuteRecord> mutes = punishments.loadActiveMutes(1_000);
         assertEquals(2, mutes.size());
         assertEquals(Set.of(a, b), Set.copyOf(mutes.stream().map(MuteRecord::targetUuid).toList()));
 
-        assertEquals(2, store.deactivateMutes(a, UUID.randomUUID(), "Alex", "appealed", 1_000), "the expired row counts too, like an unban");
-        assertEquals(List.of(b), store.loadActiveMutes(1_000).stream().map(MuteRecord::targetUuid).toList());
-        assertEquals(List.of(a), store.loadActiveBans(1_000).stream().map(BanRecord::targetUuid).toList());
+        assertEquals(2, punishments.deactivateMutes(a, UUID.randomUUID(), "Alex", "appealed", 1_000), "the expired row counts too, like an unban");
+        assertEquals(List.of(b), punishments.loadActiveMutes(1_000).stream().map(MuteRecord::targetUuid).toList());
+        assertEquals(List.of(a), punishments.loadActiveBans(1_000).stream().map(BanRecord::targetUuid).toList());
     }
 }
