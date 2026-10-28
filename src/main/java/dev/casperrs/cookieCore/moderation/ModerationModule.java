@@ -36,6 +36,7 @@ public final class ModerationModule {
     private final BanList bans = new BanList();
     private final MuteList mutes = new MuteList();
     private final ModerationService service;
+    private final PunishmentHistory history;
     private final ModerationListener listener;
     private final MuteListener muteListener;
     /** False until the active bans and mutes are loaded: they cannot be changed meanwhile, same as with no database. */
@@ -55,6 +56,7 @@ public final class ModerationModule {
         this.clock = clock;
         this.service = new ModerationService(store, io, main, bans, mutes, messages, sounds, log, clock, Bukkit::getOnlinePlayers,
                 () -> usable && directory.storageAvailable());
+        this.history = new PunishmentHistory(store, io, main, messages, sounds, log, clock, () -> directory.storageAvailable());
         this.listener = new ModerationListener(bans, messages, clock, this::load);
         this.muteListener = new MuteListener(mutes, messages, clock, new WarnOnce(log));
     }
@@ -134,6 +136,8 @@ public final class ModerationModule {
         check(commands.register(new MuteCommand(kit, service).node(), "Mute a player"), missing, "mute");
         check(commands.register(new TempmuteCommand(kit, service).node(), "Mute a player for a while"), missing, "tempmute");
         check(commands.register(new UnmuteCommand(kit, service, mutedPlayer).node(), "Unmute a player"), missing, "unmute");
+        check(commands.register(new WarnCommand(kit, service).node(), "Warn a player"), missing, "warn");
+        check(commands.register(new HistoryCommand(kit, history).node(), "Show the punishments of a player"), missing, "history");
         if (!missing.isEmpty()) {
             log.warning("Could not take over /" + String.join(", /", missing)
                     + " (another plugin owns it); the namespaced cookiecore:<command> still works");

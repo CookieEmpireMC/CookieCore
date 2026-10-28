@@ -214,6 +214,40 @@ public final class ModerationService {
         return Command.SINGLE_SUCCESS;
     }
 
+    /** A one-off row: nothing is enforced, the target just sees the warning if they are online. */
+    public int warn(CommandSender sender, PlayerRef target, boolean silent, @Nullable String reasonInput) {
+        Actor actor = Actor.of(sender, messages.raw("moderation.console"));
+        Optional<String> reason = reasonOf(sender, reasonInput);
+        if (reason.isEmpty()) {
+            return 0;
+        }
+        if (!storageUp.getAsBoolean()) {
+            return fail(sender, "moderation.error.storage-down");
+        }
+        if (actor.is(target.uuid())) {
+            return fail(sender, "moderation.error.self");
+        }
+        if (!busy.add(target.uuid())) {
+            return fail(sender, "moderation.error.busy", player(target.name()));
+        }
+        NewPunishment row = new NewPunishment(PunishmentType.WARN, target.uuid(), target.name(), actor.uuid(), actor.name(),
+                reason.get(), clock.getAsLong(), null, silent);
+        background(sender, target.uuid(), "warning of " + target.name(), () -> store.insert(row),
+                id -> afterWarn(sender, actor, target, row.reason(), silent));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private void afterWarn(CommandSender sender, Actor actor, PlayerRef target, String reason, boolean silent) {
+        TagResolver[] placeholders = placeholders(actor, target.name(), reason, null, null);
+        findOnline(target.uuid()).ifPresent(online -> {
+            messages.send(online, "moderation.warn-received", placeholders);
+            sounds.play(online, SoundEvents.UI_ERROR);
+        });
+        done(sender, "moderation.warn-done", placeholders);
+        alert(sender, target.uuid(), "moderation.warn-broadcast", silent, placeholders);
+        logAction("WARN", actor, target.name(), reason, null, silent);
+    }
+
     private void afterMute(CommandSender sender, Actor actor, MuteRecord mute, @Nullable Duration length, boolean silent) {
         mutes.put(mute);
         TagResolver[] placeholders = placeholders(actor, mute.targetName(), mute.reason(), length, mute.expiresAt());

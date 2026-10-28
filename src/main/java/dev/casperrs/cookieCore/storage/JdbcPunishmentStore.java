@@ -113,6 +113,36 @@ public final class JdbcPunishmentStore implements PunishmentStore {
     }
 
     @Override
+    public List<HistoryEntry> history(UUID target, int limit, int offset) throws StorageException {
+        List<HistoryEntry> out = new ArrayList<>();
+        try {
+            Connection c = session.connection();
+            try (PreparedStatement st = c.prepareStatement("SELECT id, type, actor_name, reason, created_at, expires_at, active FROM "
+                    + p + "punishments WHERE target_uuid = ? ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?")) {
+                st.setString(1, target.toString());
+                st.setInt(2, limit);
+                st.setInt(3, offset);
+                try (ResultSet rs = st.executeQuery()) {
+                    while (rs.next()) {
+                        long expires = rs.getLong(6);
+                        Long expiresAt = rs.wasNull() ? null : expires; // wasNull() refers to the last column read
+                        try {
+                            out.add(new HistoryEntry(rs.getLong(1), PunishmentType.valueOf(rs.getString(2)), rs.getString(3),
+                                    rs.getString(4), rs.getLong(5), expiresAt, rs.getBoolean(7)));
+                        } catch (IllegalArgumentException unknownType) {
+                            log.warning("Skipped a row of " + p + "punishments with the unknown type " + rs.getString(2));
+                        }
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            session.invalidate();
+            throw new StorageException("Could not read the history of " + target, e);
+        }
+        return out;
+    }
+
+    @Override
     public int deactivateBans(UUID target, UUID byUuid, String byName, String reason, long now) throws StorageException {
         return deactivate(PunishmentType.BAN, target, byUuid, byName, reason, now);
     }
