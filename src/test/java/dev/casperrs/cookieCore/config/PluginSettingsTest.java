@@ -146,6 +146,15 @@ class PluginSettingsTest {
         assertEquals(DatabaseSettings.Type.H2, s.database().type());
     }
 
+    /** chat.enabled is read; a value that is not true or false is reported and the chat stays on. */
+    @Test
+    void chatSwitchIsReadAndABadValueFallsBackToOn() {
+        assertFalse(from("chat:\n  enabled: false\n").chatEnabled());
+        assertTrue(problems.isEmpty(), problems.toString());
+        assertTrue(from("chat:\n  enabled: maybe\n").chatEnabled());
+        assertEquals(1, problems.size(), problems.toString());
+    }
+
     @Test
     void withDatabaseReplacesOnlyTheDatabase() {
         PluginSettings a = from("database:\n  file: a/file\n");

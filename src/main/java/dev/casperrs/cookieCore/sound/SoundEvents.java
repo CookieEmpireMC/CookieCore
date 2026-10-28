@@ -6,6 +6,7 @@ public final class SoundEvents {
     public static final String UI_CONFIRM = "ui_confirm";
     public static final String UI_ERROR = "ui_error";
     public static final String UI_NOTIFY = "ui_notify";
+    public static final String CHAT_MESSAGE = "chat_message";
 
     private SoundEvents() {
     }

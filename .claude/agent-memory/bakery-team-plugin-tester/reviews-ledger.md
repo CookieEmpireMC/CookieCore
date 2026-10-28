@@ -4,6 +4,21 @@ description: Per reviewed area, the commit verified and what passed; re-review o
 metadata:
   type: project
 ---
+## CookieCore `core-chat-join` round 2 (2026-10-28), VERDICT READY
+Coder commit `a49eeb4` (authored Wesly, on the tester branch `core-chat-join/plugin-tester`; src/main and messages.yml only). Reviewed the whole `git show a49eeb4`. Tests: `9cbf4b6` (ChatListenerTest 4, ChatSettingsTest +2, ArchitectureRulesTest +1). Suite 258 run, 0 failed, 1 skipped; `mise run check` BUILD SUCCESS.
+Resolved: M-1 (`MuteListener` predicate is `Predicate<Player>`, `ChatModule.staffChannelActive(Player)` needs the permission), M-2 (`CookieCore.settings` volatile, reflection test), L-1 (rank cache swapped as a whole, miss = default prefix, no permission read), L-3 (console stays a staff reader; `staffReaders` static, tested), L-4 (`chat.motd-hidden-count` key), L-5 (bad motd item rule), PERF-LOW-3 (notifier early return).
+Open LOW: L-2 (`hasPermission` read on chat thread in `ChatListener.java:46` and in `staffChannelActive`, reads only), L-6 (`CookieCore.java:90` inline FQN), L-7 (staff line dropped on shutdown), PERF-LOW-1 (LuckPerms prefix parsed per message).
+Gap: `ChatModule.staffChannelActive` itself is not unit tested (needs a JavaPlugin); ChatListenerTest mirrors the expression. Suggest a package-private static seam. In-game step 12 covers it.
+
+## CookieCore `core-chat-join` (2026-10-28, round 1), VERDICT NOT READY (M-1, M-2)
+Review doc: `docs/reviews/2026-10-28-core-chat-join.md` (tester branch `core-chat-join/plugin-tester` in the coder's worktree: `643433c` fixes the two invalidated tests, `31e32ef` chat tests, then the docs commit). Coder verified at `03dce54`.
+Areas: `chat/*` (all 15 classes), `CoreWiring` and the `CookieCore.java` wiring diff, `MuteListener`/`MuteList`/`ModerationModule` (exemption, labels, `collectMissing`), `ChatText`, `Messages` helpers, `PluginSettings` `chat.enabled`, `Perm`, `paper-plugin.yml`, `chat.yml`, `messages.yml`, `sounds.yml`, `config.yml`.
+Passed: renderer only (no `event.message`), `ignoreCancelled` at HIGH, no player text parsed, staff delivery on main, LuckPerms isolation (factory plus architecture rule), `CookieCore.java` 192 lines, scheduler only in `CookieCore`, 4a/4b labels intact, per-player state removed on quit.
+Open: M-1 MEDIUM (`MuteListener.java:83` exemption ignores the staff permission; `ChatModule.java:79`), M-2 MEDIUM (`CookieCore.java:52` settings not volatile, read by async chat and ping), LOW L-1..L-7, PERF-LOW-1..3, no PERF-HIGH.
+Timing (dev machine, warm, throwaway test, deleted): chat line render about 10 us, MOTD render about 9 us, expiry tick with 200 players about 20 us per second.
+Suite: 225 before the chat tests, 251 after (1 skipped, pre-existing `ScoreboardLayoutTest`).
+Next re-review: `git diff 03dce54..HEAD -- src/main` on the coder branch, plus the M-1 regression test.
+
 ## CookieCore `core-moderation-mutes` slice 1 (2026-10-28), VERDICT READY
 Review doc: `docs/reviews/2026-10-28-core-moderation-mutes.md`. Coder code verified at `468182e`; tester commits `78a5dcb` (tests), `ce3060f` (review, architecture). Suite 213 run, 0 failed, 1 skipped; `mise run check` BUILD SUCCESS.
 Areas: `moderation/MuteList`, `MuteListener`, `ModerationService` mute/unmute, `ModerationModule` mute load, `JdbcPlayerStore` loadActive/deactivate refactor (ban SQL unchanged), `PunishmentStore` defaults, `paper-plugin.yml` mute nodes.
@@ -33,7 +48,7 @@ Tests: 137 run / 5 failing before; 156 run / 0 failing after (`mise run check` B
 Review doc: `docs/reviews/2026-10-27-core-gamemode.md`. Coder branch merged at `5be0617`; verified at `5f453ed` (tester tests and deprecation fix) with the docs commit `8374d9a`.
 Areas: `gamemode/` (all 8 classes: GameModes, GameModeCommand, GameModeArgument, PlayerTargets, FlyCommand, FlyTracker, SpeedCommand, SpeedScale), `Perm.java`, `paper-plugin.yml` (gamemode/fly/speed nodes), `CookieCore.java` registration lines, `messages.yml` gamemode/fly/speed keys, `docs/architecture.md`.
 Tests: 137 before, 160 after (+23, 0 skipped); `mise run check` BUILD SUCCESS.
-Open LOW: L-1 `FlyTracker.java:33` `Player#isOnGround()` deprecated (use the `Entity` method), L-2 unknown mode/number errors no `ui_error`, L-3 `/gamemode` single player (`@a` refused, decision), L-4 `others` also needs the mode node (decision, stricter than brief), L-5 vanilla `/minecraft:gamemode` ungated by our nodes (by design), L-6 permission revocation only on next mode switch, L-7 `fly`/`speed` label takeover not logged, L-8 English command descriptions, L-9 kick → `PlayerQuitEvent` unverified (in-game step 15; MEDIUM if it fails), L-10 `/fly` off mid-air fall damage.
+Open LOW: L-1 `FlyTracker.java:33` `Player#isOnGround()` deprecated (use the `Entity` method), L-2 unknown mode/number errors no `ui_error`, L-3 `/gamemode` single player (`@a` refused, decision), L-4 `others` also needs the mode node (decision, stricter than brief), L-5 vanilla `/minecraft:gamemode` ungated by our nodes (by design), L-6 permission revocation only on next mode switch, L-7 `fly`/`speed` label takeover not logged, L-8 English command descriptions, L-9 kick -> `PlayerQuitEvent` unverified (in-game step 15; MEDIUM if it fails), L-10 `/fly` off mid-air fall damage.
 Next re-review: `git diff 5f453ed..HEAD -- src/main` for the coder's L-1/L-7 fixes (tests run in full).
 
 ## CookieCore `core-tidy` (2026-10-26), VERDICT READY

@@ -10,14 +10,18 @@ import java.util.function.Consumer;
  * Everything in {@code config.yml}. Reloadable except {@code database}, which needs a restart.
  * Wrong values are reported to {@code problems} and replaced by the default, so the plugin always gets a usable object.
  */
-public record PluginSettings(String serverName, DatabaseSettings database, boolean scoreboardEnabled) {
+public record PluginSettings(String serverName, DatabaseSettings database, boolean scoreboardEnabled, boolean chatEnabled) {
 
     static final String DEFAULT_SERVER_NAME = "Cookie Empire";
     static final String DEFAULT_PREFIX = "core_";
 
+    public PluginSettings(String serverName, DatabaseSettings database, boolean scoreboardEnabled) {
+        this(serverName, database, scoreboardEnabled, true);
+    }
+
     /** Same settings with another database block (reload keeps the running database until a restart). */
     public PluginSettings withDatabase(DatabaseSettings db) {
-        return new PluginSettings(serverName, db, scoreboardEnabled);
+        return new PluginSettings(serverName, db, scoreboardEnabled, chatEnabled);
     }
 
     public static PluginSettings from(ConfigurationSection c, Path dataFolder, Consumer<String> problems) {
@@ -60,7 +64,15 @@ public record PluginSettings(String serverName, DatabaseSettings database, boole
             problems.accept("config.yml: scoreboard.enabled '" + rawScoreboard + "' is not true or false; using true");
         }
 
-        return new PluginSettings(serverName, db, scoreboardEnabled);
+        boolean chatEnabled = true;
+        Object rawChat = c.get("chat.enabled");
+        if (rawChat instanceof Boolean b) {
+            chatEnabled = b;
+        } else if (rawChat != null) {
+            problems.accept("config.yml: chat.enabled '" + rawChat + "' is not true or false; using true");
+        }
+
+        return new PluginSettings(serverName, db, scoreboardEnabled, chatEnabled);
     }
 
     /** {@code getInt} ignores a quoted number such as {@code '3308'}; this accepts it and reports anything that is not a whole number. */

@@ -1,29 +1,22 @@
 package dev.casperrs.cookieCore;
 
 import dev.casperrs.cookieCore.api.CookieCoreApi;
-import dev.casperrs.cookieCore.command.CommandKit;
-import dev.casperrs.cookieCore.command.CookieCoreCommand;
-import dev.casperrs.cookieCore.command.ScoreboardCommand;
+import dev.casperrs.cookieCore.chat.ChatModule;
 import dev.casperrs.cookieCore.config.ConfigLoader;
 import dev.casperrs.cookieCore.config.PluginSettings;
-import dev.casperrs.cookieCore.gamemode.FlyCommand;
-import dev.casperrs.cookieCore.gamemode.FlyTracker;
-import dev.casperrs.cookieCore.gamemode.GameModeCommand;
-import dev.casperrs.cookieCore.gamemode.SpeedCommand;
 import dev.casperrs.cookieCore.moderation.ModerationModule;
 import dev.casperrs.cookieCore.player.PlayerDirectory;
-import dev.casperrs.cookieCore.player.PlayerListener;
 import dev.casperrs.cookieCore.scoreboard.ScoreboardModule;
 import dev.casperrs.cookieCore.sound.SoundService;
 import dev.casperrs.cookieCore.storage.DriverConnectionFactory;
 import dev.casperrs.cookieCore.storage.JdbcPlayerStore;
 import dev.casperrs.cookieCore.storage.StorageThread;
 import dev.casperrs.cookieCore.text.Messages;
-import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,7 +49,8 @@ public final class CookieCore extends JavaPlugin {
     static final int SHUTDOWN_TIMEOUT_SECONDS = 10;
 
     private ConfigLoader loader;
-    private PluginSettings settings;
+    /** Read by the chat and ping threads through lambdas; {@link #reload} replaces it. */
+    private volatile PluginSettings settings;
     private Messages messages;
     private SoundService sounds;
     private ExecutorService io;
@@ -64,6 +58,7 @@ public final class CookieCore extends JavaPlugin {
     private CoreService api;
     private ScoreboardModule scoreboard;
     private ModerationModule moderation;
+    private @Nullable ChatModule chat;
 
     @Override
     public void onEnable() {
@@ -95,33 +90,20 @@ public final class CookieCore extends JavaPlugin {
         directory.start();
         moderation = new ModerationModule(getLogger(), new dev.casperrs.cookieCore.storage.JdbcPunishmentStore(store, getLogger()), io, this::runOnMainThread, messages, sounds, directory, System::currentTimeMillis);
         moderation.load(); // queued behind the migration on the storage thread; logins wait for it
+        if (settings.chatEnabled()) {
+            chat = new ChatModule(this, messages, sounds, moderation.mutes(), System::currentTimeMillis, this::runOnMainThread,
+                    this::repeatOnMainThread, () -> settings.serverName());
+            List<String> chatProblems = new ArrayList<>();
+            chat.loadConfig(chatProblems);
+            chatProblems.forEach(getLogger()::warning);
+            problems.addAll(chatProblems);
+        }
 
-        // 4. listeners
-        getServer().getPluginManager().registerEvents(moderation.listener(), this);
-        getServer().getPluginManager().registerEvents(moderation.muteListener(), this);
-        getServer().getPluginManager().registerEvents(new PlayerListener(directory), this);
-        Bukkit.getOnlinePlayers().forEach(p -> directory.seen(p.getUniqueId(), p.getName())); // after a /reload
-        getServer().getPluginManager().registerEvents(scoreboard.listener(), this);
-        scoreboard.apply();
-        FlyTracker flyTracker = new FlyTracker(this::runOnMainThread);
-        getServer().getPluginManager().registerEvents(flyTracker, this);
-
-        // 5. commands
-        CommandKit kit = new CommandKit(messages, sounds, directory);
-        CookieCoreCommand command = new CookieCoreCommand(kit, messages, sounds,
-                () -> settings, getPluginMeta().getVersion(), directory::storageAvailable, this::reload);
-        ScoreboardCommand sidebarCommand = new ScoreboardCommand(kit, sounds, scoreboard.service());
-        GameModeCommand gameMode = new GameModeCommand(kit, messages, sounds);
-        FlyCommand fly = new FlyCommand(kit, messages, sounds, flyTracker);
-        SpeedCommand speed = new SpeedCommand(kit, messages, sounds);
-        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> {
-            event.registrar().register(command.node(), "CookieCore admin commands");
-            event.registrar().register(sidebarCommand.node(), "Hide or show your sidebar", List.of("sb"));
-            gameMode.register(event.registrar(), getLogger());
-            event.registrar().register(fly.node(), "Toggle flight");
-            event.registrar().register(speed.node(), "Change walking or flying speed");
-            moderation.register(event.registrar(), kit);
-        });
+        // 4. listeners and 5. commands
+        CoreWiring wiring = new CoreWiring(this, messages, sounds, directory, () -> settings, this::reload, this::runOnMainThread,
+                scoreboard, moderation, chat);
+        wiring.registerListeners();
+        wiring.registerCommands();
 
         // 6. public API
         api = new CoreService(getPluginMeta().getVersion(), directory, scoreboard.placeholders());
@@ -136,6 +118,11 @@ public final class CookieCore extends JavaPlugin {
         safely("the sidebar", () -> {
             if (scoreboard != null) {
                 scoreboard.shutdown();
+            }
+        });
+        safely("the chat", () -> {
+            if (chat != null) {
+                chat.shutdown();
             }
         });
         safely("the public API", () -> {
@@ -167,11 +154,18 @@ public final class CookieCore extends JavaPlugin {
         if (!fresh.database().equals(settings.database())) {
             problems.add("database.* changed; restart the server to switch databases");
         }
+        if (fresh.chatEnabled() != (chat != null)) {
+            problems.add("chat.enabled changed; restart the server to apply it");
+        }
         settings = fresh.withDatabase(settings.database());
         loader.loadMessages(messages, problems);
         loader.loadSounds(sounds, problems);
         scoreboard.loadConfig(problems);
         scoreboard.apply();
+        if (chat != null) {
+            chat.loadConfig(problems);
+            chat.apply();
+        }
         problems.forEach(getLogger()::warning);
         return problems;
     }

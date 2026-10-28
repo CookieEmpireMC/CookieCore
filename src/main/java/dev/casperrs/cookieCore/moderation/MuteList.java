@@ -59,6 +59,11 @@ public final class MuteList {
         return mute == null || mute.expired(now) ? Optional.empty() : Optional.of(mute);
     }
 
+    /** The mute held for the player even if it has run out; empty after an unmute. */
+    public Optional<MuteRecord> recorded(UUID target) {
+        return Optional.ofNullable(mutes.get(target));
+    }
+
     /** Names of muted players that start with {@code lowerCasePrefix}, alphabetical, at most {@code limit}. */
     public List<String> activeNames(String lowerCasePrefix, int limit, long now) {
         return mutes.values().stream()
