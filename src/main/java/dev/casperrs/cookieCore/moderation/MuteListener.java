@@ -9,13 +9,18 @@ import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 
 import java.time.Duration;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.LongSupplier;
 
-/** Cancels the chat of muted players. Runs on the async chat thread: memory only, no database, no thread hop. */
+/** Cancels the chat and the whisper commands of muted players. Memory only, no database, no thread hop. */
 public final class MuteListener implements Listener {
+
+    private static final Set<String> WHISPER_LABELS = Set.of("msg", "tell", "w", "whisper", "me");
 
     private final MuteList mutes;
     private final Messages messages;
@@ -27,6 +32,35 @@ public final class MuteListener implements Listener {
         this.messages = messages;
         this.clock = clock;
         this.warnOnce = warnOnce;
+    }
+
+    /**
+     * The vanilla whisper commands would let a muted player talk around the mute. {@code PlayerCommandPreprocessEvent} is
+     * used (not deprecated in 26.3) because it carries the raw line, so the {@code minecraft:} prefix and the alias are
+     * read in one place; a Brigadier-only hook would need one node per alias. Main thread, memory only.
+     */
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onCommand(PlayerCommandPreprocessEvent event) {
+        if (!mutes.loaded() || !isWhisper(event.getMessage())) {
+            return;
+        }
+        if (mutes.active(event.getPlayer().getUniqueId(), clock.getAsLong()).isPresent()) {
+            event.setCancelled(true);
+            messages.send(event.getPlayer(), "moderation.muted-command");
+        }
+    }
+
+    static boolean isWhisper(String line) {
+        int end = line.indexOf(' ');
+        String label = (end < 0 ? line : line.substring(0, end)).toLowerCase(Locale.ROOT);
+        if (!label.startsWith("/")) {
+            return false;
+        }
+        label = label.substring(1);
+        if (label.startsWith("minecraft:")) {
+            label = label.substring("minecraft:".length());
+        }
+        return WHISPER_LABELS.contains(label);
     }
 
     /** LOWEST, so plugins that ignore cancelled events never format or relay the message. */
