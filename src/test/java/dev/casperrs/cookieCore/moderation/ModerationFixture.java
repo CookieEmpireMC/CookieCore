@@ -11,6 +11,7 @@ import dev.casperrs.cookieCore.player.PlayerDirectory;
 import dev.casperrs.cookieCore.sound.SoundConfigParser;
 import dev.casperrs.cookieCore.sound.SoundService;
 import dev.casperrs.cookieCore.storage.JdbcPlayerStore;
+import dev.casperrs.cookieCore.storage.JdbcPunishmentStore;
 import dev.casperrs.cookieCore.storage.PunishmentStore;
 import dev.casperrs.cookieCore.storage.StorageException;
 import dev.casperrs.cookieCore.text.Messages;
@@ -53,7 +54,7 @@ final class ModerationFixture {
     final PlayerDirectory directory;
     final CommandKit kit;
     private final String url = "jdbc:h2:mem:mod" + UUID.randomUUID().toString().replace("-", "") + ";DB_CLOSE_DELAY=-1";
-    final JdbcPlayerStore store;
+    final JdbcPunishmentStore store;
     final BanList bans = new BanList();
     final MuteList mutes = new MuteList();
     final CommandDispatcher<CommandSourceStack> dispatcher = new CommandDispatcher<>();
@@ -71,8 +72,9 @@ final class ModerationFixture {
         directory = new PlayerDirectory(TestSupport.noStore(), Runnable::run, Runnable::run, log.logger, () -> 1L);
         directory.start();
         kit = new CommandKit(messages, sounds, directory);
-        store = new JdbcPlayerStore(() -> DriverManager.getConnection(url), "core_", log.logger);
-        store.init();
+        JdbcPlayerStore players = new JdbcPlayerStore(() -> DriverManager.getConnection(url), "core_", log.logger);
+        store = new JdbcPunishmentStore(players, log.logger);
+        players.init();
         bans.markLoaded();
         TestVanillaArgumentProvider.ONLINE.clear();
         service = service(store);

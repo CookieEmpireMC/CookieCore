@@ -36,9 +36,10 @@ public final class ModerationModule {
     private final BanList bans = new BanList();
     private final MuteList mutes = new MuteList();
     private final ModerationService service;
+    private final PunishmentHistory history;
     private final ModerationListener listener;
     private final MuteListener muteListener;
-    /** False until the active bans are loaded: bans cannot be changed meanwhile, same as with no database. */
+    /** False until the start-up loads have finished (bans loaded, mute load run): nothing can be changed meanwhile, same as with no database. */
     private volatile boolean usable;
     private final AtomicBoolean loading = new AtomicBoolean();
     /** Storage thread only. */
@@ -55,6 +56,7 @@ public final class ModerationModule {
         this.clock = clock;
         this.service = new ModerationService(store, io, main, bans, mutes, messages, sounds, log, clock, Bukkit::getOnlinePlayers,
                 () -> usable && directory.storageAvailable());
+        this.history = new PunishmentHistory(store, io, main, messages, sounds, log, clock, () -> directory.storageAvailable());
         this.listener = new ModerationListener(bans, messages, clock, this::load);
         this.muteListener = new MuteListener(mutes, messages, clock, new WarnOnce(log));
     }
@@ -95,10 +97,10 @@ public final class ModerationModule {
             }
             List<BanRecord> active = store.loadActiveBans(clock.getAsLong());
             bans.load(active);
-            usable = true;
             bans.markLoaded();
             log.info("Loaded " + active.size() + " active ban(s)");
             loadMutes();
+            usable = true; // after the mutes, so a /mute in the start-up window cannot add a second row
         } catch (StorageException | RuntimeException e) {
             if (!loadFailureLogged) {
                 loadFailureLogged = true;
@@ -109,7 +111,10 @@ public final class ModerationModule {
         }
     }
 
-    /** A failed mute load only leaves chat unblocked (a mute is no security boundary); logins are not affected. */
+    /**
+     * A failed mute load leaves chat unblocked (a mute is no security boundary) and makes /mute, /tempmute and /unmute refuse
+     * until a restart, so no mute is recorded that the chat check could not see. Bans and logins are not affected.
+     */
     private void loadMutes() {
         try {
             List<MuteRecord> active = store.loadActiveMutes(clock.getAsLong());
@@ -117,7 +122,8 @@ public final class ModerationModule {
             mutes.markLoaded();
             log.info("Loaded " + active.size() + " active mute(s)");
         } catch (StorageException | RuntimeException e) {
-            log.log(Level.SEVERE, "Could not load the active mutes: muted players can chat until the next restart", e);
+            mutes.markLoadFailed();
+            log.log(Level.SEVERE, "Could not load the active mutes: muted players can chat and mute commands are refused until the next restart", e);
         }
     }
 
@@ -134,6 +140,8 @@ public final class ModerationModule {
         check(commands.register(new MuteCommand(kit, service).node(), "Mute a player"), missing, "mute");
         check(commands.register(new TempmuteCommand(kit, service).node(), "Mute a player for a while"), missing, "tempmute");
         check(commands.register(new UnmuteCommand(kit, service, mutedPlayer).node(), "Unmute a player"), missing, "unmute");
+        check(commands.register(new WarnCommand(kit, service).node(), "Warn a player"), missing, "warn");
+        check(commands.register(new HistoryCommand(kit, history).node(), "Show the punishments of a player"), missing, "history");
         if (!missing.isEmpty()) {
             log.warning("Could not take over /" + String.join(", /", missing)
                     + " (another plugin owns it); the namespaced cookiecore:<command> still works");

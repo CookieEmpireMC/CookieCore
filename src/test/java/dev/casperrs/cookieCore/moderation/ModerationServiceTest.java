@@ -25,6 +25,96 @@ class ModerationServiceTest {
         f = new ModerationFixture();
     }
 
+    /** The write runs before the target hears of the warning; the write is queued, so nothing is told until it lands. */
+    @Test
+    void aWarningIsWrittenBeforeTheTargetHearsOfIt() throws Exception {
+        TestPlayer alex = f.player("Alex", Perm.STAFF_WARN);
+        TestPlayer steve = f.player("Steve");
+        Recording store = new Recording(f.store);
+        f.deferStorage = true;
+        assertEquals(1, f.service(store).warn(alex.player, f.ref(steve), false, "spam"));
+        assertEquals(0, store.inserts);
+        assertFalse(heard(steve, "You have been warned"));
+        f.runDeferred();
+        assertEquals(1, store.inserts);
+        assertTrue(heard(steve, "You have been warned"), steve.rec.plain().toString());
+    }
+
+    /** A failed warning write changes nothing: the target hears nothing and the sender is told. */
+    @Test
+    void aFailedWarningWriteTellsTheSenderAndTheTargetHearsNothing() {
+        TestPlayer alex = f.player("Alex", Perm.STAFF_WARN);
+        TestPlayer steve = f.player("Steve");
+        f.service(ModerationFixture.failingInserts(f.store)).warn(alex.player, f.ref(steve), false, "spam");
+        assertTrue(alex.rec.lastPlain().contains("could not be saved"), alex.rec.lastPlain());
+        assertFalse(heard(steve, "You have been warned"));
+    }
+
+    /** Warning yourself is refused before anything is written. */
+    @Test
+    void warningYourselfIsRefusedWithoutAWrite() {
+        TestPlayer alex = f.player("Alex", Perm.STAFF_WARN);
+        Recording store = new Recording(f.store);
+        assertEquals(0, f.service(store).warn(alex.player, f.ref(alex), false, "spam"));
+        assertEquals(0, store.inserts);
+    }
+
+    /** A silent warning still reaches the target, and nobody without the notify node hears the alert. */
+    @Test
+    void aSilentWarningReachesTheTargetOnly() {
+        TestPlayer alex = f.player("Alex", Perm.STAFF_WARN);
+        TestPlayer steve = f.player("Steve");
+        TestPlayer bob = f.player("Bob");
+        assertEquals(1, f.service.warn(alex.player, f.ref(steve), true, "spam"));
+        assertTrue(heard(steve, "You have been warned"));
+        assertFalse(heard(bob, "spam"));
+    }
+
+    /** While the mute load has failed, /mute and /unmute change nothing and the sender is told why. */
+    @Test
+    void muteAndUnmuteRefuseWhileTheMuteLoadFailed() {
+        TestPlayer alex = f.player("Alex", Perm.STAFF_MUTE, Perm.STAFF_UNMUTE);
+        TestPlayer steve = f.player("Steve");
+        Recording store = new Recording(f.store);
+        ModerationService service = f.service(store);
+        f.mutes.markLoadFailed();
+        assertEquals(0, service.mute(alex.player, f.ref(steve), null, false, "spam"));
+        assertEquals(0, service.unmute(alex.player, f.ref(steve), false, null));
+        assertEquals(0, store.inserts);
+        assertTrue(alex.rec.lastPlain().contains("cannot be saved"), alex.rec.lastPlain());
+    }
+
+    private static boolean heard(TestPlayer player, String text) {
+        return player.rec.plain().stream().anyMatch(message -> message.contains(text));
+    }
+
+    /** Counts the inserts that reach the store; everything else goes to {@code real}. */
+    private static final class Recording implements PunishmentStore {
+
+        private final PunishmentStore real;
+        int inserts;
+
+        Recording(PunishmentStore real) {
+            this.real = real;
+        }
+
+        @Override
+        public long insert(dev.casperrs.cookieCore.storage.NewPunishment punishment) throws StorageException {
+            inserts++;
+            return real.insert(punishment);
+        }
+
+        @Override
+        public List<BanRecord> loadActiveBans(long now) throws StorageException {
+            return real.loadActiveBans(now);
+        }
+
+        @Override
+        public int deactivateBans(UUID target, UUID byUuid, String byName, String reason, long now) throws StorageException {
+            return real.deactivateBans(target, byUuid, byName, reason, now);
+        }
+    }
+
     /** The database write comes first: when it fails nobody is kicked, the ban list is unchanged and the sender hears an error. */
     @Test
     void aFailedWriteKicksNobodyChangesNothingAndTellsTheSender() throws Exception {

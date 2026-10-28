@@ -64,13 +64,6 @@ public final class ModerationService {
     /** Targets with a write in flight (main thread only): a second command on them waits, so one ban never gets two rows. */
     private final Set<UUID> busy = new HashSet<>();
 
-    /** Without mute support: mutes are kept in a private list. */
-    public ModerationService(PunishmentStore store, Executor io, Executor main, BanList bans, Messages messages,
-                             SoundService sounds, Logger log, LongSupplier clock,
-                             Supplier<? extends Collection<? extends Player>> online, BooleanSupplier storageUp) {
-        this(store, io, main, bans, new MuteList(), messages, sounds, log, clock, online, storageUp);
-    }
-
     /** {@code io} is the storage thread, {@code main} runs a task on the main thread; {@code storageUp} says whether bans and mutes can be saved. */
     public ModerationService(PunishmentStore store, Executor io, Executor main, BanList bans, MuteList mutes, Messages messages,
                              SoundService sounds, Logger log, LongSupplier clock,
@@ -177,7 +170,7 @@ public final class ModerationService {
         if (reason.isEmpty()) {
             return 0;
         }
-        if (!storageUp.getAsBoolean()) {
+        if (!storageUp.getAsBoolean() || mutes.loadFailed()) {
             return fail(sender, "moderation.error.storage-down");
         }
         if (actor.is(target.uuid())) {
@@ -205,7 +198,7 @@ public final class ModerationService {
         if (reason.isEmpty()) {
             return 0;
         }
-        if (!storageUp.getAsBoolean()) {
+        if (!storageUp.getAsBoolean() || mutes.loadFailed()) {
             return fail(sender, "moderation.error.storage-down");
         }
         long now = clock.getAsLong();
@@ -219,6 +212,40 @@ public final class ModerationService {
                 () -> store.deactivateMutes(target.uuid(), actor.uuid(), actor.name(), reason.get(), now),
                 changed -> afterUnmute(sender, actor, target, reason.get(), silent));
         return Command.SINGLE_SUCCESS;
+    }
+
+    /** A one-off row: nothing is enforced, the target just sees the warning if they are online. */
+    public int warn(CommandSender sender, PlayerRef target, boolean silent, @Nullable String reasonInput) {
+        Actor actor = Actor.of(sender, messages.raw("moderation.console"));
+        Optional<String> reason = reasonOf(sender, reasonInput);
+        if (reason.isEmpty()) {
+            return 0;
+        }
+        if (!storageUp.getAsBoolean()) {
+            return fail(sender, "moderation.error.storage-down");
+        }
+        if (actor.is(target.uuid())) {
+            return fail(sender, "moderation.error.self");
+        }
+        if (!busy.add(target.uuid())) {
+            return fail(sender, "moderation.error.busy", player(target.name()));
+        }
+        NewPunishment row = new NewPunishment(PunishmentType.WARN, target.uuid(), target.name(), actor.uuid(), actor.name(),
+                reason.get(), clock.getAsLong(), null, silent);
+        background(sender, target.uuid(), "warning of " + target.name(), () -> store.insert(row),
+                id -> afterWarn(sender, actor, target, row.reason(), silent));
+        return Command.SINGLE_SUCCESS;
+    }
+
+    private void afterWarn(CommandSender sender, Actor actor, PlayerRef target, String reason, boolean silent) {
+        TagResolver[] placeholders = placeholders(actor, target.name(), reason, null, null);
+        findOnline(target.uuid()).ifPresent(online -> {
+            messages.send(online, "moderation.warn-received", placeholders);
+            sounds.play(online, SoundEvents.UI_ERROR);
+        });
+        done(sender, "moderation.warn-done", placeholders);
+        alert(sender, target.uuid(), "moderation.warn-broadcast", silent, placeholders);
+        logAction("WARN", actor, target.name(), reason, null, silent);
     }
 
     private void afterMute(CommandSender sender, Actor actor, MuteRecord mute, @Nullable Duration length, boolean silent) {

@@ -83,6 +83,12 @@ permissions:
   cookiecore.staff.unmute:
     description: Use /unmute.
     default: op
+  cookiecore.staff.warn:
+    description: Use /warn.
+    default: op
+  cookiecore.staff.history:
+    description: Use /history.
+    default: op
   cookiecore.staff.notify:
     description: See the alerts of silent (-s) kicks, bans, mutes and their undo.
     default: op
@@ -95,4 +101,6 @@ permissions:
       cookiecore.staff.unban: true
       cookiecore.staff.mute: true
       cookiecore.staff.unmute: true
+      cookiecore.staff.warn: true
+      cookiecore.staff.history: true
       cookiecore.staff.notify: true
