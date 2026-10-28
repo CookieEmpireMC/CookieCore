@@ -93,7 +93,7 @@ public final class CookieCore extends JavaPlugin {
         // 3. player directory (migrates the schema, loads the known players; never blocks the main thread)
         directory = new PlayerDirectory(store, io, this::runOnMainThread, getLogger(), System::currentTimeMillis);
         directory.start();
-        moderation = new ModerationModule(getLogger(), store, io, this::runOnMainThread, messages, sounds, directory, System::currentTimeMillis);
+        moderation = new ModerationModule(getLogger(), new dev.casperrs.cookieCore.storage.JdbcPunishmentStore(store, getLogger()), io, this::runOnMainThread, messages, sounds, directory, System::currentTimeMillis);
         moderation.load(); // queued behind the migration on the storage thread; logins wait for it
 
         // 4. listeners
