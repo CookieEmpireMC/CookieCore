@@ -1,6 +1,6 @@
 # core-moderation-mutes
 
-**Status:** in progress (slice 1 of phase 4b, timeboxed to 30 minutes by the user on 2026-10-28)  <!-- planned | in progress | review | done -->
+**Status:** review (slice 1 of phase 4b, built within the 30-minute timebox the user set on 2026-10-28; branch verdict READY, waits for the in-game check)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-28 · **Depends on:** `core-moderation-bans` (merged, PR #9).
 
 ## Goal
@@ -55,8 +55,8 @@ None. Defaults decided by the orchestrator: chat only (no commands) is blocked; 
 ## Status
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
-| plugin-coder | done (1 commit, 205 tests green) | `core-moderation-mutes/plugin-coder` | | Cut: `/mute` and `/unmute` are refused with the storage-down message until the start-up load ran (a clear refusal, no wrong mute); no retry of a failed mute load (chat is fail-open, a restart reloads); no sound for the muted player (chat is async) |
-| plugin-tester | launched 08:40 | `core-moderation-mutes/plugin-tester` | | |
+| plugin-coder | done (merged) | `core-moderation-mutes/plugin-coder` | READY | Cut: `/mute` and `/unmute` are refused with the storage-down message until the start-up load ran (a clear refusal, no wrong mute); no retry of a failed mute load (chat is fail-open, a restart reloads); no sound for the muted player (chat is async) |
+| plugin-tester | done (merged) | `core-moderation-mutes/plugin-tester` | READY | 213 tests; `docs/reviews/2026-10-28-core-moderation-mutes.md`; LOW-1..4 are follow-ups |
 
 ## Needs human review
 - [ ] In-game: `/mute`, `/tempmute 1m`, chat while muted, `/unmute`, restart with an active mute, offline player.
