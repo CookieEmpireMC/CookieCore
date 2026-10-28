@@ -64,13 +64,6 @@ public final class ModerationService {
     /** Targets with a write in flight (main thread only): a second command on them waits, so one ban never gets two rows. */
     private final Set<UUID> busy = new HashSet<>();
 
-    /** Without mute support: mutes are kept in a private list. */
-    public ModerationService(PunishmentStore store, Executor io, Executor main, BanList bans, Messages messages,
-                             SoundService sounds, Logger log, LongSupplier clock,
-                             Supplier<? extends Collection<? extends Player>> online, BooleanSupplier storageUp) {
-        this(store, io, main, bans, new MuteList(), messages, sounds, log, clock, online, storageUp);
-    }
-
     /** {@code io} is the storage thread, {@code main} runs a task on the main thread; {@code storageUp} says whether bans and mutes can be saved. */
     public ModerationService(PunishmentStore store, Executor io, Executor main, BanList bans, MuteList mutes, Messages messages,
                              SoundService sounds, Logger log, LongSupplier clock,

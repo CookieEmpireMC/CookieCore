@@ -38,7 +38,7 @@ public final class ModerationModule {
     private final ModerationService service;
     private final ModerationListener listener;
     private final MuteListener muteListener;
-    /** False until the active bans are loaded: bans cannot be changed meanwhile, same as with no database. */
+    /** False until the active bans and mutes are loaded: they cannot be changed meanwhile, same as with no database. */
     private volatile boolean usable;
     private final AtomicBoolean loading = new AtomicBoolean();
     /** Storage thread only. */
@@ -95,10 +95,10 @@ public final class ModerationModule {
             }
             List<BanRecord> active = store.loadActiveBans(clock.getAsLong());
             bans.load(active);
-            usable = true;
             bans.markLoaded();
             log.info("Loaded " + active.size() + " active ban(s)");
             loadMutes();
+            usable = true; // after the mutes, so a /mute in the start-up window cannot add a second row
         } catch (StorageException | RuntimeException e) {
             if (!loadFailureLogged) {
                 loadFailureLogged = true;
