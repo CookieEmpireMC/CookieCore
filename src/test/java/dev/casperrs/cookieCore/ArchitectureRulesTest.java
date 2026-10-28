@@ -218,11 +218,20 @@ class ArchitectureRulesTest {
             if (l.text().contains("registerNewObjective(") && !l.text().contains("Criteria.")) {
                 scoreboard.add(l.where());
             }
-            if (l.text().contains("net.luckperms")) {
-                scoreboard.add(l.where() + " (LuckPerms is an optional dependency: no imports yet)");
+        }
+        assertNone(scoreboard, "string scoreboard criteria");
+    }
+
+    /** LuckPerms is a soft dependency: its classes may be referenced only by the one class loaded when it is present. */
+    @Test
+    void luckPermsIsReferencedOnlyByTheLuckPermsRankSource() throws IOException {
+        List<String> found = new ArrayList<>();
+        for (Line l : code()) {
+            if (l.text().contains("net.luckperms") && !l.file().equals("chat/LuckPermsRankSource.java")) {
+                found.add(l.where());
             }
         }
-        assertNone(scoreboard, "string scoreboard criteria or stray LuckPerms import");
+        assertNone(found, "net.luckperms outside chat/LuckPermsRankSource.java");
     }
 
     /**
