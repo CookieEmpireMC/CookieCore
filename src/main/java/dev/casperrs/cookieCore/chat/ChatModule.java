@@ -15,8 +15,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
@@ -55,7 +55,7 @@ public final class ChatModule {
         }, repeater);
         this.listeners = List.of(new ChatListener(config, ranks, staff, main, serverName),
                 new JoinListener(messages, config, serverName, permissionRanks, replies, staff, expiry),
-                new MotdListener(config, serverName));
+                new MotdListener(config, messages, serverName));
     }
 
     public List<Listener> listeners() {
@@ -75,9 +75,9 @@ public final class ChatModule {
         }
     }
 
-    /** True while the player's chat goes to the staff channel; MuteListener uses it to let that chat through. Any thread. */
-    public boolean staffChannelActive(UUID player) {
-        return staff.active(player);
+    /** True while the player's chat goes to the staff channel and they may still use it; MuteListener lets that chat through. Chat thread. */
+    public boolean staffChannelActive(Player player) {
+        return staff.active(player.getUniqueId()) && player.hasPermission(Perm.STAFF_CHAT);
     }
 
     /** Registers the commands; a label another plugin owns is logged once and the rest keeps working. */
@@ -101,13 +101,18 @@ public final class ChatModule {
     }
 
     private static List<Audience> staffReaders() {
+        return staffReaders(Bukkit.getOnlinePlayers(), Bukkit.getConsoleSender());
+    }
+
+    /** The online players with the staff chat permission, then the console. */
+    static List<Audience> staffReaders(Collection<? extends Player> online, Audience console) {
         List<Audience> readers = new ArrayList<>();
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        for (Player player : online) {
             if (player.hasPermission(Perm.STAFF_CHAT)) {
                 readers.add(player);
             }
         }
-        readers.add(Bukkit.getConsoleSender());
+        readers.add(console);
         return readers;
     }
 }

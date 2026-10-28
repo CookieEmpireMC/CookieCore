@@ -86,6 +86,9 @@ public final class MuteExpiryNotifier {
                 notice.accept(player);
             }
         }
+        if (watched.isEmpty()) {
+            return;
+        }
         Set<UUID> present = players.stream().map(Player::getUniqueId).collect(Collectors.toSet());
         watched.keySet().removeIf(id -> !present.contains(id));
     }

@@ -49,7 +49,8 @@ public final class CookieCore extends JavaPlugin {
     static final int SHUTDOWN_TIMEOUT_SECONDS = 10;
 
     private ConfigLoader loader;
-    private PluginSettings settings;
+    /** Read by the chat and ping threads through lambdas; {@link #reload} replaces it. */
+    private volatile PluginSettings settings;
     private Messages messages;
     private SoundService sounds;
     private ExecutorService io;

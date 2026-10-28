@@ -6,6 +6,7 @@ import dev.casperrs.cookieCore.text.Messages;
 import dev.casperrs.cookieCore.text.TimeText;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -15,7 +16,6 @@ import java.time.Duration;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.function.LongSupplier;
 import java.util.function.Predicate;
 
@@ -28,7 +28,7 @@ public final class MuteListener implements Listener {
     private final Messages messages;
     private final LongSupplier clock;
     private final WarnOnce warnOnce;
-    private volatile Predicate<UUID> chatExemption = player -> false;
+    private volatile Predicate<Player> chatExemption = player -> false;
 
     public MuteListener(MuteList mutes, Messages messages, LongSupplier clock, WarnOnce warnOnce) {
         this.mutes = mutes;
@@ -38,7 +38,7 @@ public final class MuteListener implements Listener {
     }
 
     /** Muted players for whom {@code exempt} is true are not stopped in public chat; asked on the chat thread. */
-    public void exemptFromChatMute(Predicate<UUID> exempt) {
+    public void exemptFromChatMute(Predicate<Player> exempt) {
         chatExemption = exempt;
     }
 
@@ -80,7 +80,7 @@ public final class MuteListener implements Listener {
         }
         long now = clock.getAsLong();
         Optional<MuteRecord> mute = mutes.active(event.getPlayer().getUniqueId(), now);
-        if (mute.isEmpty() || chatExemption.test(event.getPlayer().getUniqueId())) {
+        if (mute.isEmpty() || chatExemption.test(event.getPlayer())) {
             return;
         }
         event.setCancelled(true);

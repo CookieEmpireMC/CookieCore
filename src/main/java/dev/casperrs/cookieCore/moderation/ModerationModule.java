@@ -12,11 +12,11 @@ import dev.casperrs.cookieCore.storage.StorageException;
 import dev.casperrs.cookieCore.text.Messages;
 import io.papermc.paper.command.brigadier.Commands;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Listener;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -76,7 +76,7 @@ public final class ModerationModule {
     }
 
     /** Players for whom {@code exempt} is true may chat while muted (their chat goes to the staff channel, which a mute does not block). */
-    public void exemptFromChatMute(Predicate<UUID> exempt) {
+    public void exemptFromChatMute(Predicate<Player> exempt) {
         muteListener.exemptFromChatMute(exempt);
     }
 

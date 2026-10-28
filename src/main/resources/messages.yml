@@ -30,6 +30,8 @@ chat:
   welcome-title: "<gold><bold><server></bold></gold>"
   welcome-subtitle: "<gray>Welcome, <white><player></white>!</gray>"
   welcome-line: "<prefix><gray>Welcome, <white><player></white>! Have a cookie.</gray>"
+  # Shown as <online> in the server-list MOTD when the server hides its player count
+  motd-hidden-count: "?"
   msg-to: "<gray>to <white><player></white>:</gray> <white><message></white>"
   msg-from: "<gray>from <white><player></white>:</gray> <white><message></white>"
   msg-self: "<prefix><red>You cannot message yourself.</red>"

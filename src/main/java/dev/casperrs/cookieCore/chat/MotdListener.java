@@ -1,6 +1,7 @@
 package dev.casperrs.cookieCore.chat;
 
 import com.destroystokyo.paper.event.server.PaperServerListPingEvent;
+import dev.casperrs.cookieCore.text.Messages;
 import dev.casperrs.cookieCore.text.Template;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.JoinConfiguration;
@@ -13,14 +14,13 @@ import java.util.function.Supplier;
 /** The two-line text in the server list. The ping event is async, so no Bukkit API is called here. */
 public final class MotdListener implements Listener {
 
-    /** Shown when the server hides its player count. */
-    private static final String HIDDEN_COUNT = "?";
-
     private final ChatConfig config;
+    private final Messages messages;
     private final Supplier<String> serverName;
 
-    public MotdListener(ChatConfig config, Supplier<String> serverName) {
+    public MotdListener(ChatConfig config, Messages messages, Supplier<String> serverName) {
         this.config = config;
+        this.messages = messages;
         this.serverName = serverName;
     }
 
@@ -31,7 +31,7 @@ public final class MotdListener implements Listener {
             return;
         }
         Map<String, String> values = Map.of("server", serverName.get(),
-                "online", event.getNumPlayers() < 0 ? HIDDEN_COUNT : String.valueOf(event.getNumPlayers()),
+                "online", event.getNumPlayers() < 0 ? messages.raw("chat.motd-hidden-count") : String.valueOf(event.getNumPlayers()),
                 "max", String.valueOf(event.getMaxPlayers()));
         event.motd(render(settings.motd(), values));
     }

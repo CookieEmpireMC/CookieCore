@@ -108,8 +108,14 @@ public record ChatSettings(Template format, Template staffFormat, Component defa
             problems.accept(FILE + ": 'motd' must be a list of one or two lines; the default server-list text is kept");
             return null;
         }
-        Template first = Template.compile(String.valueOf(lines.get(0)), MOTD_KEYS);
-        Template second = lines.size() > 1 ? Template.compile(String.valueOf(lines.get(1)), MOTD_KEYS) : null;
+        for (Object line : lines) {
+            if (!(line instanceof String text) || text.isBlank()) {
+                problems.accept(FILE + ": every 'motd' line must be text; the default server-list text is kept");
+                return null;
+            }
+        }
+        Template first = Template.compile((String) lines.get(0), MOTD_KEYS);
+        Template second = lines.size() > 1 ? Template.compile((String) lines.get(1), MOTD_KEYS) : null;
         return new Motd(first, second);
     }
 
