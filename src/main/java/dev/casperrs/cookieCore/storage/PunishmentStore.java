@@ -29,6 +29,11 @@ public interface PunishmentStore {
         return List.of();
     }
 
+    /** The punishments of {@code target}, newest first, {@code limit} rows after skipping {@code offset}. */
+    default List<HistoryEntry> history(UUID target, int limit, int offset) throws StorageException {
+        return List.of();
+    }
+
     /** Like {@link #deactivateBans} for mutes. */
     default int deactivateMutes(UUID target, @Nullable UUID byUuid, String byName, String reason, long now) throws StorageException {
         return 0;

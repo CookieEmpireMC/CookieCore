@@ -1,6 +1,7 @@
 package dev.casperrs.cookieCore.moderation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -14,6 +15,15 @@ class MuteListTest {
     private static final UUID ALEX = UUID.fromString("00000000-0000-0000-0000-00000000000a");
 
     /** A tempmute is active until its end, then reads as not muted; remove clears it. */
+    /** A failed start-up load is its own state: the list is not loaded and the mute commands refuse. */
+    @Test
+    void aFailedLoadIsRememberedAndTheListIsNotLoaded() {
+        MuteList list = new MuteList();
+        list.markLoadFailed();
+        assertTrue(list.loadFailed());
+        assertFalse(list.loaded());
+    }
+
     @Test
     void aTempmuteEndsAtItsExpiryAndRemoveClearsIt() {
         MuteList mutes = new MuteList();

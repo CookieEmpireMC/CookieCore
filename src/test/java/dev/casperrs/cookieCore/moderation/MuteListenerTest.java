@@ -9,8 +9,10 @@ import dev.casperrs.cookieCore.storage.MuteRecord;
 import io.papermc.paper.chat.ChatRenderer;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import java.util.HashSet;
+import java.util.List;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -64,6 +66,33 @@ class MuteListenerTest {
         AsyncChatEvent event = chat(steve);
         listener.onChat(event);
         assertFalse(event.isCancelled());
+    }
+
+    /** A muted player cannot whisper through any alias, prefix or case; other commands pass. */
+    @Test
+    void whisperCommandsAreCancelledForAMutedPlayerAndOtherCommandsPass() {
+        TestPlayer steve = f.player("Steve");
+        f.mutes.markLoaded();
+        f.mutes.put(new MuteRecord(1, steve.id, steve.name, "Alex", "spam", f.now, null));
+        for (String line : List.of("/msg Alex hi", "/tell Alex hi", "/w Alex hi", "/whisper Alex hi", "/me waves", "/minecraft:msg Alex hi", "/MSG Alex hi")) {
+            PlayerCommandPreprocessEvent whisper = new PlayerCommandPreprocessEvent(steve.player, line, new HashSet<>());
+            listener.onCommand(whisper);
+            assertTrue(whisper.isCancelled(), line);
+        }
+        assertTrue(steve.rec.lastPlain().contains("cannot use that command"), steve.rec.lastPlain());
+        PlayerCommandPreprocessEvent kick = new PlayerCommandPreprocessEvent(steve.player, "/kick Alex hi", new HashSet<>());
+        listener.onCommand(kick);
+        assertFalse(kick.isCancelled());
+    }
+
+    /** Only the first word counts as the label: /msgfoo, /say /msg and text without a slash pass. */
+    @Test
+    void isWhisperMatchesTheLabelOnly() {
+        assertTrue(MuteListener.isWhisper("/msg"));
+        assertFalse(MuteListener.isWhisper("/msgfoo x"));
+        assertFalse(MuteListener.isWhisper("/say /msg"));
+        assertFalse(MuteListener.isWhisper("msg hi"));
+        assertFalse(MuteListener.isWhisper("/minecraft:kick Alex"));
     }
 
     private static AsyncChatEvent chat(TestPlayer player) {
