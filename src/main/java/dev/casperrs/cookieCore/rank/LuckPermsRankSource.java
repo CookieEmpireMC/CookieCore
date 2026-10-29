@@ -1,8 +1,9 @@
-package dev.casperrs.cookieCore.chat;
+package dev.casperrs.cookieCore.rank;
 
 import dev.casperrs.cookieCore.text.ChatText;
 import net.kyori.adventure.text.Component;
 import net.luckperms.api.LuckPerms;
+import net.luckperms.api.model.group.Group;
 import net.luckperms.api.model.user.User;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -11,8 +12,8 @@ import org.bukkit.plugin.RegisteredServiceProvider;
 import java.util.Optional;
 
 /**
- * The prefix LuckPerms holds for the player. The only class that touches LuckPerms types, and only {@link RankSources} creates
- * it, after checking that the plugin is there, so Core runs without LuckPerms on the class path.
+ * The prefix and the group weight LuckPerms holds for the player. The only class that touches LuckPerms types, and only
+ * {@link RankSources} creates it, after checking that the plugin is there, so Core runs without LuckPerms on the class path.
  */
 final class LuckPermsRankSource implements RankSource {
 
@@ -35,5 +36,17 @@ final class LuckPermsRankSource implements RankSource {
         }
         String raw = user.getCachedData().getMetaData().getPrefix();
         return raw == null || raw.isBlank() ? Optional.empty() : Optional.of(ChatText.legacy(raw));
+    }
+
+    /** The weight of the primary group (0 when unknown, not loaded yet or without weight). Cached data only, never blocks. */
+    @Override
+    public int order(Player player) {
+        User user = luckPerms.getUserManager().getUser(player.getUniqueId());
+        if (user == null) {
+            return 0;
+        }
+        String primary = user.getCachedData().getMetaData().getPrimaryGroup();
+        Group group = primary == null ? null : luckPerms.getGroupManager().getGroup(primary);
+        return group == null ? 0 : Math.max(0, group.getWeight().orElse(0));
     }
 }

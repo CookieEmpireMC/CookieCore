@@ -4,6 +4,7 @@ description: Tooling quirks hit while testing CookieCore on Windows.
 metadata:
   type: reference
 ---
+Verified 2026-10-29 (core-tab): `mise` and the full `mise.exe` path both fail from Bash with "Permission denied" (Application Control). Working fallback: `export JAVA_HOME="C:/Users/Luuk/AppData/Local/mise/installs/java/temurin-25.0.4+101.0.LTS"` and `export PATH="/c/Users/Luuk/AppData/Local/mise/installs/maven/3.9.16/apache-maven-3.9.16/bin:$PATH"`, then `mvn.cmd -B clean verify` (mvn.cmd reads JAVA_HOME, so `java -version` on PATH may still say 21: check `mvn.cmd -v`, it shows Java 25.0.4.1). Logs go to the scratchpad, not the worktree (an untracked log in the worktree gets in the way of commits).
 Verified 2026-10-26 (replaces the 2026-10-21 notes where they changed).
 - `mise` works again (2026.10.12). In the Bash tool use `mise exec -- mvn -B -q test` or `mise run check` / `mise run test`. Earlier notes about "mise blocked by Application Control" are stale. Fallback if blocked again: JDK `C:\Users\Luuk\AppData\Local\mise\installs\java\temurin-25.0.4+101.0.LTS`, Maven `...\maven\3.9.16\apache-maven-3.9.16\bin\mvn`.
 - `mise run check` has no `check-quiet` task here, and no `validate-assets` / `sound-check` / `balance-check` tasks (no assets, no balance). Only `build`, `test`, `check`, `team`, `ownership-check` (re-checked 2026-10-28).

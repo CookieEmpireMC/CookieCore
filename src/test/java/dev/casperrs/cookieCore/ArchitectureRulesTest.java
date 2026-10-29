@@ -124,6 +124,20 @@ class ArchitectureRulesTest {
         }
     }
 
+    /** The player list name, header and order are set only by tab/ and by TabText, which owns the send-on-change rule. */
+    @Test
+    void tabListCallsLiveOnlyInTheTabPackage() throws IOException {
+        for (String needle : new String[] {"playerListName(", "sendPlayerListHeaderAndFooter(", "setPlayerListOrder("}) {
+            List<String> found = new ArrayList<>();
+            for (Line l : code()) {
+                if (!l.pkg().equals("tab") && !l.file().equals("text/TabText.java") && l.text().contains(needle)) {
+                    found.add(l.where());
+                }
+            }
+            assertNone(found, needle + " outside tab/ and text/TabText");
+        }
+    }
+
     @Test
     void storageIsALeafWithNoBukkitAndJdbcStaysInside() throws IOException {
         List<String> found = new ArrayList<>();
@@ -234,11 +248,11 @@ class ArchitectureRulesTest {
     void luckPermsIsReferencedOnlyByTheLuckPermsRankSource() throws IOException {
         List<String> found = new ArrayList<>();
         for (Line l : code()) {
-            if (l.text().contains("net.luckperms") && !l.file().equals("chat/LuckPermsRankSource.java")) {
+            if (l.text().contains("net.luckperms") && !l.file().equals("rank/LuckPermsRankSource.java")) {
                 found.add(l.where());
             }
         }
-        assertNone(found, "net.luckperms outside chat/LuckPermsRankSource.java");
+        assertNone(found, "net.luckperms outside rank/LuckPermsRankSource.java");
     }
 
     /**

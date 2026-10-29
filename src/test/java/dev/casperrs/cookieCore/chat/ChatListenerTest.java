@@ -11,6 +11,7 @@ import dev.casperrs.cookieCore.chat.ChatFixture.FakePlayer;
 import dev.casperrs.cookieCore.log.WarnOnce;
 import dev.casperrs.cookieCore.moderation.MuteList;
 import dev.casperrs.cookieCore.moderation.MuteListener;
+import dev.casperrs.cookieCore.rank.RankSource;
 import dev.casperrs.cookieCore.storage.MuteRecord;
 import dev.casperrs.cookieCore.text.Messages;
 import io.papermc.paper.chat.ChatRenderer;

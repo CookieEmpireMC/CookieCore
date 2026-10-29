@@ -4,6 +4,18 @@ description: Per reviewed area, the commit verified and what passed; re-review o
 metadata:
   type: project
 ---
+## CookieCore `core-tab` phase 1 round 2 (2026-10-29), VERDICT READY
+Coder commit `2d2bc61` (diff only): M-1 fixed (`RankSource.orElse`: `own > 0 ? own : other.order`), L-3 fixed (`PermissionRankSource.refreshIfAbsent`, `TabListener` at HIGHEST after chat's HIGH join handler), L-2 comment in `tab.yml`, L-4 Javadoc in `api/ScoreboardPlaceholders`. Tester: `f71054a` (M-1 test enabled, refreshIfAbsent test, `ArchitectureRulesTest.tabListCallsLiveOnlyInTheTabPackage`, proven to bite), `64faf20` (review round 2, architecture). Suite 282 run, 0 failed, 1 skipped (pre-existing) via `mvn.cmd -B clean verify`.
+Open LOW: L-1, L-5 (LuckPerms weight clamp needs a seam), L-6, L-7, PERF-LOW-2 (TPS step), R2-1 (`computeIfAbsent` holds a bin lock during the permission lookup; main-thread writer only).
+Next re-review: none planned for core-tab; the follow-ups go to the PR list.
+
+## CookieCore `core-tab` phase 1 (2026-10-29), VERDICT NOT READY (M-1)
+Review doc: `docs/reviews/2026-10-29-core-tab.md` (tester branch `core-tab/plugin-tester` in the coder's worktree, tip is the review commit `a2f8576`; tests `5d0b254`, `5b9aa48`, `ae0e16d`). Coder verified at `664cad1`.
+Areas: `tab/*` (all 8 classes), `rank/*` (all 6, moved from `chat`), `chat/ChatModule` and `ChatSettings` (rank split), `CookieCore` onEnable/reload/onDisable, `CoreWiring`, `ConfigLoader.collect`, `PluginSettings` tab switch, `PlaceholderRegistry` (made public), `text/TabText`, `config.yml`, `tab.yml`, `paper-plugin.yml` description.
+Passed: packet rule (send on text change only), main-thread only, getPing for viewers only, quit and drop cleanup, reload and disable resets, shipped `tab.yml` strict, names stay text, broken-file rules, 200-viewer timing (26 us quiet tick, 0 packets), `CookieCore.java` 199 lines, architecture rules with `rank/LuckPermsRankSource`, full build 280 run / 0 failed / 2 skipped.
+Open: M-1 MEDIUM (`rank/RankSource.java:32` `orElse` takes the LuckPerms order only when it has a prefix or weight; prefix-without-weight hides chat.yml order; test `RankSettingsTest.aLuckPermsGroupWithoutWeightDoesNotHideTheChatYmlOrder` is `@Disabled`, fails today). LOW L-1..L-7 and PERF-LOW-1/2 in the review.
+Next re-review: `git diff <coder commit after 664cad1>..HEAD -- src/main` for the M-1 fix; enable the disabled test; full suite.
+
 ## CookieCore `core-chat-join` round 2 (2026-10-28), VERDICT READY
 Coder commit `a49eeb4` (authored Wesly, on the tester branch `core-chat-join/plugin-tester`; src/main and messages.yml only). Reviewed the whole `git show a49eeb4`. Tests: `9cbf4b6` (ChatListenerTest 4, ChatSettingsTest +2, ArchitectureRulesTest +1). Suite 258 run, 0 failed, 1 skipped; `mise run check` BUILD SUCCESS.
 Resolved: M-1 (`MuteListener` predicate is `Predicate<Player>`, `ChatModule.staffChannelActive(Player)` needs the permission), M-2 (`CookieCore.settings` volatile, reflection test), L-1 (rank cache swapped as a whole, miss = default prefix, no permission read), L-3 (console stays a staff reader; `staffReaders` static, tested), L-4 (`chat.motd-hidden-count` key), L-5 (bad motd item rule), PERF-LOW-3 (notifier early return).
