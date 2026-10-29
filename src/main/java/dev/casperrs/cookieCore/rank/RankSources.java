@@ -1,4 +1,4 @@
-package dev.casperrs.cookieCore.chat;
+package dev.casperrs.cookieCore.rank;
 
 import org.bukkit.Bukkit;
 

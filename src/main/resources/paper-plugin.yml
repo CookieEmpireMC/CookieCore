@@ -5,7 +5,7 @@ main: dev.casperrs.cookieCore.CookieCore
 loader: dev.casperrs.cookieCore.CookieCoreLoader
 api-version: '26.3'
 load: POSTWORLD
-description: Cookie Empire core - the server's base layer (scoreboard, gamemode, moderation, chat and join lines).
+description: Cookie Empire core - the server's base layer (scoreboard, tab list, gamemode, moderation, chat and join lines).
 
 dependencies:
   server:

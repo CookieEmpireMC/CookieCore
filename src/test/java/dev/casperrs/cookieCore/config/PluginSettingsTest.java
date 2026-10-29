@@ -155,6 +155,15 @@ class PluginSettingsTest {
         assertEquals(1, problems.size(), problems.toString());
     }
 
+    /** tab.enabled is read like chat.enabled: off is kept, a value that is not true or false reports and stays on. */
+    @Test
+    void tabSwitchIsReadAndABadValueFallsBackToOn() {
+        assertFalse(from("tab:\n  enabled: false\n").tabEnabled());
+        assertTrue(problems.isEmpty(), problems.toString());
+        assertTrue(from("tab:\n  enabled: maybe\n").tabEnabled());
+        assertEquals(1, problems.size(), problems.toString());
+    }
+
     @Test
     void withDatabaseReplacesOnlyTheDatabase() {
         PluginSettings a = from("database:\n  file: a/file\n");

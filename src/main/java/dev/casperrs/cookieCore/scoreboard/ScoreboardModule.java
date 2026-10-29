@@ -35,6 +35,11 @@ public final class ScoreboardModule {
         return registry;
     }
 
+    /** The same registry with its resolving side, for features that fill their own templates (the tab list). */
+    public PlaceholderRegistry registry() {
+        return registry;
+    }
+
     public SidebarService service() {
         return service;
     }

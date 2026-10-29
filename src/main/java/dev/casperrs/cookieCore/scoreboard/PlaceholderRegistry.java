@@ -64,12 +64,12 @@ public final class PlaceholderRegistry implements ScoreboardPlaceholders {
         return version.get();
     }
 
-    List<String> keys() {
+    public List<String> keys() {
         return entries.keySet().stream().sorted().toList();
     }
 
     /** The value for {@code key}; empty text when the key is gone or its resolver throws or returns null (logged once per key). */
-    Component resolve(String key, Player player) {
+    public Component resolve(String key, Player player) {
         Entry entry = entries.get(key);
         if (entry == null) {
             return Component.empty();

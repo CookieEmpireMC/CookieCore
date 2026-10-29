@@ -14,6 +14,7 @@ import dev.casperrs.cookieCore.player.PlayerDirectory;
 import dev.casperrs.cookieCore.player.PlayerListener;
 import dev.casperrs.cookieCore.scoreboard.ScoreboardModule;
 import dev.casperrs.cookieCore.sound.SoundService;
+import dev.casperrs.cookieCore.tab.TabModule;
 import dev.casperrs.cookieCore.text.Messages;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import org.bukkit.Bukkit;
@@ -36,12 +37,13 @@ final class CoreWiring {
     private final ScoreboardModule scoreboard;
     private final ModerationModule moderation;
     private final @Nullable ChatModule chat;
+    private final TabModule tab;
     private final FlyTracker flyTracker;
 
     /** {@code main} runs a task on the main thread; {@code chat} is null when {@code chat.enabled} is false. */
     CoreWiring(JavaPlugin plugin, Messages messages, SoundService sounds, PlayerDirectory directory,
                Supplier<PluginSettings> settings, CookieCoreCommand.Reloader reloader, Consumer<Runnable> main,
-               ScoreboardModule scoreboard, ModerationModule moderation, @Nullable ChatModule chat) {
+               ScoreboardModule scoreboard, ModerationModule moderation, @Nullable ChatModule chat, TabModule tab) {
         this.plugin = plugin;
         this.messages = messages;
         this.sounds = sounds;
@@ -51,6 +53,7 @@ final class CoreWiring {
         this.scoreboard = scoreboard;
         this.moderation = moderation;
         this.chat = chat;
+        this.tab = tab;
         this.flyTracker = new FlyTracker(main);
     }
 
@@ -62,6 +65,8 @@ final class CoreWiring {
         Bukkit.getOnlinePlayers().forEach(p -> directory.seen(p.getUniqueId(), p.getName())); // after a /reload
         plugins.registerEvents(scoreboard.listener(), plugin);
         scoreboard.apply();
+        plugins.registerEvents(tab.listener(), plugin);
+        tab.apply();
         plugins.registerEvents(flyTracker, plugin);
         if (chat != null) {
             chat.listeners().forEach(listener -> plugins.registerEvents(listener, plugin));

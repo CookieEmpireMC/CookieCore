@@ -6,11 +6,13 @@ import dev.casperrs.cookieCore.config.ConfigLoader;
 import dev.casperrs.cookieCore.config.PluginSettings;
 import dev.casperrs.cookieCore.moderation.ModerationModule;
 import dev.casperrs.cookieCore.player.PlayerDirectory;
+import dev.casperrs.cookieCore.rank.Ranks;
 import dev.casperrs.cookieCore.scoreboard.ScoreboardModule;
 import dev.casperrs.cookieCore.sound.SoundService;
 import dev.casperrs.cookieCore.storage.DriverConnectionFactory;
 import dev.casperrs.cookieCore.storage.JdbcPlayerStore;
 import dev.casperrs.cookieCore.storage.StorageThread;
+import dev.casperrs.cookieCore.tab.TabModule;
 import dev.casperrs.cookieCore.text.Messages;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
@@ -22,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.random.RandomGenerator;
 
@@ -58,6 +61,8 @@ public final class CookieCore extends JavaPlugin {
     private CoreService api;
     private ScoreboardModule scoreboard;
     private ModerationModule moderation;
+    private Ranks ranks;
+    private TabModule tab;
     private @Nullable ChatModule chat;
 
     @Override
@@ -80,28 +85,26 @@ public final class CookieCore extends JavaPlugin {
         getLogger().info("Using " + settings.database().describe());
         scoreboard = new ScoreboardModule(this, store, io, this::runOnMainThread, this::repeatOnMainThread,
                 () -> settings.scoreboardEnabled(), () -> settings.serverName());
-        List<String> scoreboardProblems = new ArrayList<>();
-        scoreboard.loadConfig(scoreboardProblems);
-        scoreboardProblems.forEach(getLogger()::warning);
-        problems.addAll(scoreboardProblems);
+        ConfigLoader.collect(getLogger(), scoreboard::loadConfig, problems);
 
         // 3. player directory (migrates the schema, loads the known players; never blocks the main thread)
         directory = new PlayerDirectory(store, io, this::runOnMainThread, getLogger(), System::currentTimeMillis);
         directory.start();
+        ranks = new Ranks(this);
+        ConfigLoader.collect(getLogger(), found -> ranks.reload(settings.chatEnabled() ? new ArrayList<>() : found), problems);
+        tab = new TabModule(this, ranks, this::repeatOnMainThread, () -> settings.tabEnabled(), () -> settings.serverName(), scoreboard.registry());
+        ConfigLoader.collect(getLogger(), tab::loadConfig, problems);
         moderation = new ModerationModule(getLogger(), new dev.casperrs.cookieCore.storage.JdbcPunishmentStore(store, getLogger()), io, this::runOnMainThread, messages, sounds, directory, System::currentTimeMillis);
         moderation.load(); // queued behind the migration on the storage thread; logins wait for it
         if (settings.chatEnabled()) {
             chat = new ChatModule(this, messages, sounds, moderation.mutes(), System::currentTimeMillis, this::runOnMainThread,
-                    this::repeatOnMainThread, () -> settings.serverName());
-            List<String> chatProblems = new ArrayList<>();
-            chat.loadConfig(chatProblems);
-            chatProblems.forEach(getLogger()::warning);
-            problems.addAll(chatProblems);
+                    this::repeatOnMainThread, () -> settings.serverName(), ranks);
+            ConfigLoader.collect(getLogger(), chat::loadConfig, problems);
         }
 
         // 4. listeners and 5. commands
         CoreWiring wiring = new CoreWiring(this, messages, sounds, directory, () -> settings, this::reload, this::runOnMainThread,
-                scoreboard, moderation, chat);
+                scoreboard, moderation, chat, tab);
         wiring.registerListeners();
         wiring.registerCommands();
 
@@ -115,16 +118,9 @@ public final class CookieCore extends JavaPlugin {
     @Override
     public void onDisable() {
         // a throw in any step must never skip the storage flush at the end
-        safely("the sidebar", () -> {
-            if (scoreboard != null) {
-                scoreboard.shutdown();
-            }
-        });
-        safely("the chat", () -> {
-            if (chat != null) {
-                chat.shutdown();
-            }
-        });
+        stop("the sidebar", scoreboard, ScoreboardModule::shutdown);
+        stop("the chat", chat, ChatModule::shutdown);
+        stop("the tab list", tab, TabModule::shutdown);
         safely("the public API", () -> {
             if (api != null) {
                 getServer().getServicesManager().unregister(CookieCoreApi.class, api);
@@ -162,6 +158,9 @@ public final class CookieCore extends JavaPlugin {
         loader.loadSounds(sounds, problems);
         scoreboard.loadConfig(problems);
         scoreboard.apply();
+        ranks.reload(chat != null ? new ArrayList<>() : problems);
+        tab.loadConfig(problems);
+        tab.apply();
         if (chat != null) {
             chat.loadConfig(problems);
             chat.apply();
@@ -181,6 +180,13 @@ public final class CookieCore extends JavaPlugin {
     private Runnable repeatOnMainThread(Runnable task, long periodTicks) {
         BukkitTask handle = Bukkit.getScheduler().runTaskTimer(this, task, periodTicks, periodTicks);
         return handle::cancel;
+    }
+
+    /** Stops a module that may not have started if the enable failed halfway. */
+    private <T> void stop(String what, @Nullable T module, Consumer<T> step) {
+        if (module != null) {
+            safely(what, () -> step.accept(module));
+        }
     }
 
     private void safely(String what, Runnable step) {

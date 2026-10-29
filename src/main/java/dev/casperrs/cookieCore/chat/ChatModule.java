@@ -4,6 +4,8 @@ import dev.casperrs.cookieCore.Perm;
 import dev.casperrs.cookieCore.command.CommandKit;
 import dev.casperrs.cookieCore.config.YamlFiles;
 import dev.casperrs.cookieCore.moderation.MuteList;
+import dev.casperrs.cookieCore.rank.RankSource;
+import dev.casperrs.cookieCore.rank.Ranks;
 import dev.casperrs.cookieCore.sound.SoundEvents;
 import dev.casperrs.cookieCore.sound.SoundService;
 import dev.casperrs.cookieCore.text.Messages;
@@ -31,30 +33,28 @@ public final class ChatModule {
     private final MuteList mutes;
     private final LongSupplier clock;
     private final ChatConfig config;
-    private final PermissionRankSource permissionRanks;
     private final ReplyTracker replies = new ReplyTracker();
     private final StaffChat staff;
     private final MuteExpiryNotifier expiry;
     private final List<Listener> listeners;
 
-    /** {@code main} runs a task on the main thread; {@code serverName} reads {@code server.name} of config.yml. */
+    /** {@code main} runs a task on the main thread; {@code serverName} reads {@code server.name} of config.yml; {@code rankSet} is shared with the tab list. */
     public ChatModule(JavaPlugin plugin, Messages messages, SoundService sounds, MuteList mutes, LongSupplier clock,
-                      Executor main, MuteExpiryNotifier.Repeater repeater, Supplier<String> serverName) {
+                      Executor main, MuteExpiryNotifier.Repeater repeater, Supplier<String> serverName, Ranks rankSet) {
         this.log = plugin.getLogger();
         this.messages = messages;
         this.sounds = sounds;
         this.mutes = mutes;
         this.clock = clock;
         this.config = new ChatConfig(() -> YamlFiles.load(plugin, "chat.yml"), () -> YamlFiles.jarCopy(plugin, "chat.yml"));
-        this.permissionRanks = new PermissionRankSource(config::current);
-        RankSource ranks = RankSources.create(permissionRanks, log);
+        RankSource ranks = rankSet.source();
         this.staff = new StaffChat(config, messages, ranks, serverName, ChatModule::staffReaders);
         this.expiry = new MuteExpiryNotifier(mutes, clock, Bukkit::getOnlinePlayers, player -> {
             messages.send(player, "moderation.mute-expired");
             sounds.play(player, SoundEvents.UI_NOTIFY);
         }, repeater);
         this.listeners = List.of(new ChatListener(config, ranks, staff, main, serverName),
-                new JoinListener(messages, config, serverName, permissionRanks, replies, staff, expiry),
+                new JoinListener(messages, config, serverName, rankSet.permission(), replies, staff, expiry),
                 new MotdListener(config, messages, serverName));
     }
 
@@ -67,9 +67,8 @@ public final class ChatModule {
         config.load(problems);
     }
 
-    /** After enable and reload: rank prefixes for the players already online (a {@code /reload} fires no join events). */
+    /** After enable and reload: restart the expiry notices for the players already online (a {@code /reload} fires no join events). */
     public void apply() {
-        permissionRanks.refreshAll(Bukkit.getOnlinePlayers());
         if (!Bukkit.getOnlinePlayers().isEmpty()) {
             expiry.start();
         }

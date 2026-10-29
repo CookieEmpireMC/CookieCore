@@ -32,7 +32,13 @@
 - https://repo1.maven.org/maven2/net/luckperms/api/maven-metadata.xml | latest 5.5 (2025-05-25) | 2026-10-28 | volatile
 - https://minecraft.wiki/w/Commands/msg | aliases tell, w only | 2026-10-28 | stable
 
+- raw.githubusercontent.com/PaperMC/Paper/main/paper-api/.../entity/Player.java (170k; offsets 0 and 100000, ask targeted), paper-server/.../CraftPlayer.java (144k; offset 0 has order/name setters, 100000 has getPing/header), CraftServer.java (offset 100000 has getTPS), Server.java | tab/order/ping/TPS facts | 2026-10-29 | stable-ish (main)
+- raw .../paper-server/patches/sources/net/minecraft/server/{level/ServerPlayer,players/PlayerList,network/ServerCommonPacketListenerImpl}.java.patch | listOrder default 0; join event before info packets; latency EWMA | 2026-10-29 | stable-ish
+- https://minecraft.wiki/w/Java_Edition_protocol/Packets offset 200000 | Player Info Update "Update List Priority": higher sorted first; tie-breaks | 2026-10-29 | stable
+- raw LuckPerms api CachedMetaData/Group/GroupManager/User .java, bukkit/src/main/resources/config.yml | primary group + weight + primary-group-calculation | 2026-10-29 | stable
+
 ## Dead ends / tips
+- luckperms.net/wiki/Configuration returns only title (use raw config.yml). Searches for setPlayerListOrder "since" version give nothing; wiki.vg/NEZNAMY TAB wiki say nothing about the order field.
 - 404: docs.papermc.io/paper/dev/breaking-changes/, docs.papermc.io/adventure/chat-decoration/, LuckPerms/wiki raw, LuckPerms/api README. ChatProcessor raw: ask targeted questions, it is big.
 - mariadb-connector-j raw Statement.java / ClientPreparedStatement.java paths 404 (any branch); only Jira tickets (CONJ-953/957) found for getGeneratedKeys. h2database.com/html/grammar.html lacks AUTO_INCREMENT (use Mode.java).
 - Paper *.java.patch files are 170k chars; the WebFetch summarizer reads only the first 100k per window, but targeted prompts on ServerCommonPacketListenerImpl/PlayerList/ServerLoginPacketListenerImpl patches worked.

@@ -1,6 +1,7 @@
 package dev.casperrs.cookieCore.chat;
 
 import dev.casperrs.cookieCore.Perm;
+import dev.casperrs.cookieCore.rank.PermissionRankSource;
 import dev.casperrs.cookieCore.text.Messages;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;

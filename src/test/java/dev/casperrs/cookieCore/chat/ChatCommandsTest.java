@@ -13,6 +13,7 @@ import dev.casperrs.cookieCore.command.CommandKit;
 import dev.casperrs.cookieCore.config.YamlFiles;
 import dev.casperrs.cookieCore.moderation.MuteList;
 import dev.casperrs.cookieCore.player.PlayerDirectory;
+import dev.casperrs.cookieCore.rank.RankSource;
 import dev.casperrs.cookieCore.sound.SoundConfigParser;
 import dev.casperrs.cookieCore.sound.SoundService;
 import dev.casperrs.cookieCore.storage.MuteRecord;

@@ -9,6 +9,7 @@ import dev.casperrs.cookieCore.Perm;
 import dev.casperrs.cookieCore.TestSupport;
 import dev.casperrs.cookieCore.chat.ChatFixture.FakePlayer;
 import dev.casperrs.cookieCore.moderation.MuteList;
+import dev.casperrs.cookieCore.rank.PermissionRankSource;
 import dev.casperrs.cookieCore.text.Messages;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +31,7 @@ class JoinListenerTest {
     JoinListenerTest() {
         ChatConfig config = ChatFixture.shippedConfig();
         config.load(new ArrayList<>());
-        PermissionRankSource ranks = new PermissionRankSource(config::current);
+        PermissionRankSource ranks = new PermissionRankSource(() -> config.current() == null ? null : config.current().rank());
         staff = new StaffChat(config, messages, ranks, () -> ChatFixture.SERVER, () -> List.of());
         MuteExpiryNotifier expiry = new MuteExpiryNotifier(new MuteList(), () -> 0L, () -> List.of(), p -> { },
                 (task, period) -> () -> { });

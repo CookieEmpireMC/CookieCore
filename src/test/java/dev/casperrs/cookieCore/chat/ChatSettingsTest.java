@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import dev.casperrs.cookieCore.TestSupport;
 import dev.casperrs.cookieCore.chat.ChatFixture.FakePlayer;
 import dev.casperrs.cookieCore.config.YamlFiles;
+import dev.casperrs.cookieCore.rank.PermissionRankSource;
+import dev.casperrs.cookieCore.rank.RankSource;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -144,7 +146,7 @@ class ChatSettingsTest {
         Map<String, Object> map = new HashMap<>(YamlFiles.toMap(TestSupport.resourceYaml("chat.yml")));
         map.put("default-prefix", "<gray>guest ");
         ChatSettings settings = ChatSettings.parse(map, problems::add).orElseThrow();
-        PermissionRankSource ranks = new PermissionRankSource(() -> settings);
+        PermissionRankSource ranks = new PermissionRankSource(() -> settings.rank());
         FakePlayer steve = new FakePlayer("Steve", ADMIN);
         FakePlayer alex = new FakePlayer("Alex", MEMBER);
         ranks.refreshAll(List.of(steve.player));
