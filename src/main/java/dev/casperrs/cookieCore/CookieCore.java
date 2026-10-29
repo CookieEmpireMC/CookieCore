@@ -12,6 +12,7 @@ import dev.casperrs.cookieCore.sound.SoundService;
 import dev.casperrs.cookieCore.storage.DriverConnectionFactory;
 import dev.casperrs.cookieCore.storage.JdbcPlayerStore;
 import dev.casperrs.cookieCore.storage.StorageThread;
+import dev.casperrs.cookieCore.tab.TabModule;
 import dev.casperrs.cookieCore.text.Messages;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.ServicePriority;
@@ -61,6 +62,7 @@ public final class CookieCore extends JavaPlugin {
     private ScoreboardModule scoreboard;
     private ModerationModule moderation;
     private Ranks ranks;
+    private TabModule tab;
     private @Nullable ChatModule chat;
 
     @Override
@@ -89,8 +91,9 @@ public final class CookieCore extends JavaPlugin {
         directory = new PlayerDirectory(store, io, this::runOnMainThread, getLogger(), System::currentTimeMillis);
         directory.start();
         ranks = new Ranks(this);
-        // chat.yml's own load reports the same faults when chat is on
         ConfigLoader.collect(getLogger(), found -> ranks.reload(settings.chatEnabled() ? new ArrayList<>() : found), problems);
+        tab = new TabModule(this, ranks, this::repeatOnMainThread, () -> settings.tabEnabled(), () -> settings.serverName(), scoreboard.registry());
+        ConfigLoader.collect(getLogger(), tab::loadConfig, problems);
         moderation = new ModerationModule(getLogger(), new dev.casperrs.cookieCore.storage.JdbcPunishmentStore(store, getLogger()), io, this::runOnMainThread, messages, sounds, directory, System::currentTimeMillis);
         moderation.load(); // queued behind the migration on the storage thread; logins wait for it
         if (settings.chatEnabled()) {
@@ -101,7 +104,7 @@ public final class CookieCore extends JavaPlugin {
 
         // 4. listeners and 5. commands
         CoreWiring wiring = new CoreWiring(this, messages, sounds, directory, () -> settings, this::reload, this::runOnMainThread,
-                scoreboard, moderation, chat);
+                scoreboard, moderation, chat, tab);
         wiring.registerListeners();
         wiring.registerCommands();
 
@@ -117,6 +120,7 @@ public final class CookieCore extends JavaPlugin {
         // a throw in any step must never skip the storage flush at the end
         stop("the sidebar", scoreboard, ScoreboardModule::shutdown);
         stop("the chat", chat, ChatModule::shutdown);
+        stop("the tab list", tab, TabModule::shutdown);
         safely("the public API", () -> {
             if (api != null) {
                 getServer().getServicesManager().unregister(CookieCoreApi.class, api);
@@ -155,6 +159,8 @@ public final class CookieCore extends JavaPlugin {
         scoreboard.loadConfig(problems);
         scoreboard.apply();
         ranks.reload(chat != null ? new ArrayList<>() : problems);
+        tab.loadConfig(problems);
+        tab.apply();
         if (chat != null) {
             chat.loadConfig(problems);
             chat.apply();

@@ -51,7 +51,8 @@ public final class Ranks {
     /**
      * Enable and reload, main thread: reads the ranks of {@code chat.yml} again and resolves them for everybody online (a
      * {@code /reload} fires no join events). A broken file keeps the previous ranks; before the first good read nothing is
-     * ranked. Problems are added to {@code problems}.
+     * ranked. Problems are added to {@code problems}; the chat module reads the same file and reports the same faults, so when
+     * chat is on the caller passes a throwaway list.
      */
     public void reload(List<String> problems) {
         Optional<RankSettings> fresh = Optional.empty();
