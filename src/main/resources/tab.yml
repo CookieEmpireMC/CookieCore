@@ -21,4 +21,6 @@ footer:
   - "<gray>Ping <white><ping>ms</white> <dark_gray>|</dark_gray> TPS <white><tps></white> <dark_gray>|</dark_gray> Online <white><online></white><dark_gray>/</dark_gray><white><max></white></gray>"
 
 # One name in the list. <rank_prefix> is the rank's prefix from chat.yml or LuckPerms (empty without a rank).
+# Keep it static: a placeholder that changes here (<ping>, <tps>, <online>, a registered key) sends the name again to every
+# viewer of that player on each change.
 name-format: "<rank_prefix><player>"

@@ -2,6 +2,7 @@ package dev.casperrs.cookieCore.tab;
 
 import dev.casperrs.cookieCore.rank.Ranks;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -20,7 +21,8 @@ final class TabListener implements Listener {
         this.ranks = ranks;
     }
 
-    @EventHandler
+    /** After the chat's join handler (HIGH), which resolves the rank first when chat is on. */
+    @EventHandler(priority = EventPriority.HIGHEST)
     public void onJoin(PlayerJoinEvent event) {
         ranks.join(event.getPlayer());
         service.join(event.getPlayer());

@@ -32,6 +32,11 @@ public final class PermissionRankSource implements RankSource {
         cache.put(player.getUniqueId(), resolve(player));
     }
 
+    /** Main thread. Resolves only when nothing is cached yet, so two join handlers do the work once. */
+    public void refreshIfAbsent(Player player) {
+        cache.computeIfAbsent(player.getUniqueId(), id -> resolve(player));
+    }
+
     /** Main thread. The new cache is built aside and swapped in, so the chat thread never sees it half filled. */
     public void refreshAll(Collection<? extends Player> online) {
         Map<UUID, RankSettings.Resolved> fresh = new ConcurrentHashMap<>();

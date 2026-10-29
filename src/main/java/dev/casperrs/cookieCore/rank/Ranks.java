@@ -39,9 +39,9 @@ public final class Ranks {
         return permission;
     }
 
-    /** Main thread: resolve the permission rank of a player who just joined. */
+    /** Main thread: resolve the permission rank of a player who just joined, unless the chat join handler already did. */
     public void join(Player player) {
-        permission.refresh(player);
+        permission.refreshIfAbsent(player);
     }
 
     public void quit(UUID player) {

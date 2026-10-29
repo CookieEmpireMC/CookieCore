@@ -13,6 +13,9 @@ import java.util.function.Function;
  * <p>The resolver runs on the main thread, about once per second for each player who sees the sidebar, and only while
  * {@code scoreboard.yml} uses the key: keep it fast and read from memory. A resolver that throws or returns
  * {@code null} shows empty text and is logged once. A plugin's placeholders are dropped when it is disabled.
+ *
+ * <p>The same keys are available in {@code tab.yml}. There the tab list's own {@code tps} and {@code rank_prefix} are built
+ * in: a plugin may register those two names, but only the sidebar shows its value, the tab list keeps its own.
  */
 public interface ScoreboardPlaceholders {
 

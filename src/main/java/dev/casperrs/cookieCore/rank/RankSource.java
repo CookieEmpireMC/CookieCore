@@ -17,7 +17,7 @@ public interface RankSource {
         return 0;
     }
 
-    /** This source first, {@code other} when this one has nothing; the order comes from the same source as the prefix. */
+    /** This source first, {@code other} when this one has nothing. The order is this source's when it is above 0 (a weight of 0 means none), else {@code other}'s. */
     default RankSource orElse(RankSource other) {
         RankSource first = this;
         return new RankSource() {
@@ -29,7 +29,7 @@ public interface RankSource {
             @Override
             public int order(Player player) {
                 int own = first.order(player);
-                return own > 0 || first.prefix(player).isPresent() ? own : other.order(player);
+                return own > 0 ? own : other.order(player);
             }
         };
     }
