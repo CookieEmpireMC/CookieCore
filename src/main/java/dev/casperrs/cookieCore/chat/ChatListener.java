@@ -1,6 +1,7 @@
 package dev.casperrs.cookieCore.chat;
 
 import dev.casperrs.cookieCore.Perm;
+import dev.casperrs.cookieCore.rank.RankSource;
 import io.papermc.paper.chat.ChatRenderer;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.Component;

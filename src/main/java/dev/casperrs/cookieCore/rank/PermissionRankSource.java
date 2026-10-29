@@ -1,4 +1,4 @@
-package dev.casperrs.cookieCore.chat;
+package dev.casperrs.cookieCore.rank;
 
 import net.kyori.adventure.text.Component;
 import org.bukkit.entity.Player;
@@ -18,10 +18,12 @@ import java.util.function.Supplier;
  */
 public final class PermissionRankSource implements RankSource {
 
-    private final Supplier<@Nullable ChatSettings> settings;
-    private volatile Map<UUID, Optional<Component>> cache = new ConcurrentHashMap<>();
+    private static final RankSettings.Resolved NONE = new RankSettings.Resolved(Optional.empty(), 0);
 
-    public PermissionRankSource(Supplier<@Nullable ChatSettings> settings) {
+    private final Supplier<@Nullable RankSettings> settings;
+    private volatile Map<UUID, RankSettings.Resolved> cache = new ConcurrentHashMap<>();
+
+    public PermissionRankSource(Supplier<@Nullable RankSettings> settings) {
         this.settings = settings;
     }
 
@@ -32,7 +34,7 @@ public final class PermissionRankSource implements RankSource {
 
     /** Main thread. The new cache is built aside and swapped in, so the chat thread never sees it half filled. */
     public void refreshAll(Collection<? extends Player> online) {
-        Map<UUID, Optional<Component>> fresh = new ConcurrentHashMap<>();
+        Map<UUID, RankSettings.Resolved> fresh = new ConcurrentHashMap<>();
         online.forEach(player -> fresh.put(player.getUniqueId(), resolve(player)));
         cache = fresh;
     }
@@ -43,17 +45,26 @@ public final class PermissionRankSource implements RankSource {
 
     @Override
     public Optional<Component> prefix(Player player) {
-        Optional<Component> known = cache.get(player.getUniqueId());
+        return known(player).prefix();
+    }
+
+    @Override
+    public int order(Player player) {
+        return known(player).order();
+    }
+
+    private RankSettings.Resolved known(Player player) {
+        RankSettings.Resolved known = cache.get(player.getUniqueId());
         if (known != null) {
             return known;
         }
         // not resolved on the main thread yet: Bukkit permissions must not be read from the chat thread
-        ChatSettings current = settings.get();
-        return current == null ? Optional.empty() : current.prefixFor(permission -> false);
+        RankSettings current = settings.get();
+        return current == null ? NONE : current.resolve(permission -> false);
     }
 
-    private Optional<Component> resolve(Player player) {
-        ChatSettings current = settings.get();
-        return current == null ? Optional.empty() : current.prefixFor(player::hasPermission);
+    private RankSettings.Resolved resolve(Player player) {
+        RankSettings current = settings.get();
+        return current == null ? NONE : current.resolve(player::hasPermission);
     }
 }

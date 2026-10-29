@@ -6,8 +6,11 @@ import dev.casperrs.cookieCore.text.Messages;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.logging.Logger;
 
 /**
  * Loads {@code config.yml}, {@code messages.yml} and {@code sounds.yml} for enable and reload. A file that cannot be read
@@ -68,5 +71,13 @@ public final class ConfigLoader {
                 soundsLoaded = true;
             }
         }
+    }
+
+    /** Runs a module's config load, logs what it found and adds it to {@code all}. */
+    public static void collect(Logger log, Consumer<List<String>> load, List<String> all) {
+        List<String> found = new ArrayList<>();
+        load.accept(found);
+        found.forEach(log::warning);
+        all.addAll(found);
     }
 }

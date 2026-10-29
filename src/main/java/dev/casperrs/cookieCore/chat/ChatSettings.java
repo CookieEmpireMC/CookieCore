@@ -1,11 +1,10 @@
 package dev.casperrs.cookieCore.chat;
 
-import dev.casperrs.cookieCore.text.ChatText;
+import dev.casperrs.cookieCore.rank.RankSettings;
 import dev.casperrs.cookieCore.text.Template;
 import net.kyori.adventure.text.Component;
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -16,8 +15,7 @@ import java.util.function.Predicate;
  * {@code chat.yml} parsed and compiled. Immutable: the chat and the server-list ping read it on other threads through a
  * volatile reference, so a reload swaps the whole object.
  */
-public record ChatSettings(Template format, Template staffFormat, Component defaultPrefix, List<Rank> ranks,
-                           @Nullable Motd motd, Welcome welcome) {
+public record ChatSettings(Template format, Template staffFormat, RankSettings rank, @Nullable Motd motd, Welcome welcome) {
 
     /** Placeholders of {@code format} and {@code staff-format}. The message comes last so nothing replaces text inside it. */
     static final List<String> CHAT_KEYS = List.of("server", "rank_prefix", "player", "message");
@@ -26,10 +24,6 @@ public record ChatSettings(Template format, Template staffFormat, Component defa
     static final int DEFAULT_STAY = 70;
     static final int DEFAULT_FADE_OUT = 20;
     private static final String FILE = "chat.yml";
-
-    /** A player with {@code permission} gets {@code prefix} in front of their name. */
-    public record Rank(String permission, Component prefix) {
-    }
 
     /** The server-list text; {@code second} is null when the file has one line. */
     public record Motd(Template first, @Nullable Template second) {
@@ -50,19 +44,17 @@ public record ChatSettings(Template format, Template staffFormat, Component defa
         if (format == null || staffFormat == null) {
             return Optional.empty();
         }
-        Component defaultPrefix = yaml.get("default-prefix") instanceof String s && !s.isBlank() ? ChatText.mini(s) : Component.empty();
-        return Optional.of(new ChatSettings(format, staffFormat, defaultPrefix, ranks(yaml.get("ranks"), problems),
-                motd(yaml.get("motd"), problems), welcome(yaml.get("welcome"), problems)));
+        return Optional.of(new ChatSettings(format, staffFormat, RankSettings.parse(yaml, problems), motd(yaml.get("motd"), problems),
+                welcome(yaml.get("welcome"), problems)));
+    }
+
+    public List<RankSettings.Rank> ranks() {
+        return rank.ranks();
     }
 
     /** The first rank whose permission the player has, else the default prefix; empty when that is empty too. */
     public Optional<Component> prefixFor(Predicate<String> hasPermission) {
-        for (Rank rank : ranks) {
-            if (hasPermission.test(rank.permission())) {
-                return Optional.of(rank.prefix());
-            }
-        }
-        return defaultPrefix.equals(Component.empty()) ? Optional.empty() : Optional.of(defaultPrefix);
+        return rank.prefixFor(hasPermission);
     }
 
     private static @Nullable Template template(Map<String, Object> yaml, String key, Consumer<String> problems) {
@@ -76,28 +68,6 @@ public record ChatSettings(Template format, Template staffFormat, Component defa
             return null;
         }
         return template;
-    }
-
-    private static List<Rank> ranks(@Nullable Object raw, Consumer<String> problems) {
-        if (raw == null) {
-            return List.of();
-        }
-        if (!(raw instanceof List<?> entries)) {
-            problems.accept(FILE + ": 'ranks' must be a list of permission and prefix pairs; no ranks used");
-            return List.of();
-        }
-        List<Rank> out = new ArrayList<>();
-        int number = 0;
-        for (Object entry : entries) {
-            number++;
-            if (entry instanceof Map<?, ?> map && map.get("permission") instanceof String permission && !permission.isBlank()
-                    && map.get("prefix") instanceof String prefix) {
-                out.add(new Rank(permission.trim(), ChatText.mini(prefix)));
-            } else {
-                problems.accept(FILE + ": ranks entry " + number + " needs a 'permission' and a 'prefix'; skipped");
-            }
-        }
-        return List.copyOf(out);
     }
 
     private static @Nullable Motd motd(@Nullable Object raw, Consumer<String> problems) {

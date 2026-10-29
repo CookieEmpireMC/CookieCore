@@ -1,5 +1,6 @@
 package dev.casperrs.cookieCore.chat;
 
+import dev.casperrs.cookieCore.rank.RankSource;
 import dev.casperrs.cookieCore.text.Messages;
 import net.kyori.adventure.audience.Audience;
 import net.kyori.adventure.text.Component;
