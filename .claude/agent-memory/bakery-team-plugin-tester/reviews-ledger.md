@@ -4,6 +4,11 @@ description: Per reviewed area, the commit verified and what passed; re-review o
 metadata:
   type: project
 ---
+## CookieCore `core-tab` phase 1 round 2 (2026-10-29), VERDICT READY
+Coder commit `2d2bc61` (diff only): M-1 fixed (`RankSource.orElse`: `own > 0 ? own : other.order`), L-3 fixed (`PermissionRankSource.refreshIfAbsent`, `TabListener` at HIGHEST after chat's HIGH join handler), L-2 comment in `tab.yml`, L-4 Javadoc in `api/ScoreboardPlaceholders`. Tester: `f71054a` (M-1 test enabled, refreshIfAbsent test, `ArchitectureRulesTest.tabListCallsLiveOnlyInTheTabPackage`, proven to bite), `64faf20` (review round 2, architecture). Suite 282 run, 0 failed, 1 skipped (pre-existing) via `mvn.cmd -B clean verify`.
+Open LOW: L-1, L-5 (LuckPerms weight clamp needs a seam), L-6, L-7, PERF-LOW-2 (TPS step), R2-1 (`computeIfAbsent` holds a bin lock during the permission lookup; main-thread writer only).
+Next re-review: none planned for core-tab; the follow-ups go to the PR list.
+
 ## CookieCore `core-tab` phase 1 (2026-10-29), VERDICT NOT READY (M-1)
 Review doc: `docs/reviews/2026-10-29-core-tab.md` (tester branch `core-tab/plugin-tester` in the coder's worktree, tip is the review commit `a2f8576`; tests `5d0b254`, `5b9aa48`, `ae0e16d`). Coder verified at `664cad1`.
 Areas: `tab/*` (all 8 classes), `rank/*` (all 6, moved from `chat`), `chat/ChatModule` and `ChatSettings` (rank split), `CookieCore` onEnable/reload/onDisable, `CoreWiring`, `ConfigLoader.collect`, `PluginSettings` tab switch, `PlaceholderRegistry` (made public), `text/TabText`, `config.yml`, `tab.yml`, `paper-plugin.yml` description.
