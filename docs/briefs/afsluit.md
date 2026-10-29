@@ -1,9 +1,9 @@
-# Afsluit: stand van zaken (bijgewerkt 2026-10-28, na de merge van PR #11; fase 5 staat open als PR)
+# Afsluit: stand van zaken (bijgewerkt 2026-10-29, na de merge van PR #12; fase 1 (tab) staat open als PR)
 
 Overdracht voor de volgende sessie. Lees eerst dit bestand, daarna `docs/briefs/ROADMAP.md`.
 
 ## Waar staan we
-`main` bevat alles tot en met fase 4b (moderatie is af). Alle PR's zijn door Luuk gemerged. Daarbovenop staat fase 5 `core-chat-join` als open PR op `feature/core-chat-join`.
+`main` bevat alles tot en met fase 5 (chat en join). Alle PR's zijn door Luuk gemerged. Daarbovenop staat fase 1 `core-tab` (door Luuk alsnog goedgekeurd) als open PR op `feature/core-tab`.
 
 | Stap | PR | Inhoud |
 |---|---|---|
@@ -14,11 +14,12 @@ Overdracht voor de volgende sessie. Lees eerst dit bestand, daarna `docs/briefs/
 | Fase 4a `core-moderation-bans` | #9 | `/kick` `/ban` `/tempban` `/unban`, banscherm, staff-melding, auditlog (`punishments`, opslag v3) |
 | Fase 4b plak 1 `core-moderation-mutes` | #10 | `/mute` `/tempmute` `/unmute`, chat geblokkeerd, overleeft herstart |
 | Fase 4b plak 2 `core-moderation-warns` | #11 | `/warn`, `/history <speler> [pagina]`, `/me` en `/msg`-labels geblokkeerd voor gemute spelers, `JdbcPunishmentStore` los van `JdbcPlayerStore` |
-| Fase 5 `core-chat-join` | open PR | chatformaat met rank-prefix (LuckPerms of `chat.yml`), join/quit/first-join, welkomsttitel, server-MOTD, `/msg` `/r`, `/sc` staff chat, melding als een tempmute afloopt, `CoreWiring` |
+| Fase 5 `core-chat-join` | #12 | chatformaat met rank-prefix (LuckPerms of `chat.yml`), join/quit/first-join, welkomsttitel, server-MOTD, `/msg` `/r`, `/sc` staff chat, melding als een tempmute afloopt, `CoreWiring` |
+| Fase 1 `core-tab` | open PR | tab met header/footer (server, online, ping, TPS), spelers gesorteerd op rank met prefix (`setPlayerListOrder`, geen teams), `tab.yml`, gedeeld `rank`-pakket |
 
-- `mise run check`: 224 tests op `main`, 258 op de chat-branch; 0 mislukt, 1 bewust overgeslagen (scoreboard L-4).
-- Fase 1 (tab) is door Luuk overgeslagen.
-- **Volgende:** fase 6 `core-hub-essentials` (`/spawn` `/setspawn`, vanish, maintenance, `/seen`; alleen wat de hub echt nodig heeft), daarna fase 7 `core-hardening`. Start pas na Luuks "go". Eerst de in-game test van alles tot en met fase 5, vooral de chat (zie hieronder).
+- `mise run check` (= `mvn -B clean verify`): 258 tests op `main`, 282 op de tab-branch; 0 mislukt, 1 bewust overgeslagen (scoreboard L-4).
+- **Windows blokkeert `mise.exe`** (Application Control). Draai `mvn.cmd -B clean verify` met `JAVA_HOME=%LOCALAPPDATA%\mise\installs\java\temurin-25.0.4+101.0.LTS` en `%LOCALAPPDATA%\mise\installs\maven\3.9.16\apache-maven-3.9.16\bin\mvn.cmd`.
+- **Volgende:** fase 6 `core-hub-essentials` (`/spawn` `/setspawn`, vanish, maintenance, `/seen`; alleen wat de hub echt nodig heeft; vanish moet ook de tab-lijst verbergen), daarna fase 7 `core-hardening`. Start pas na Luuks "go". Eerst de in-game test van alles tot en met fase 5 en de tab, vooral de chat en de tab (zie hieronder).
 - Follow-ups uit de reviews staan in de PR's #10, #11 en de chat-PR (o.a. `PunishmentStore`-methodes abstract maken, `activeNames` bij tab-completie, history-index, LuckPerms-prefix per bericht parsen).
 
 ## Voor Luuk (niet door een agent te doen)

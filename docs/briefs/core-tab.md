@@ -1,6 +1,6 @@
 # core-tab
 
-**Status:** in progress  <!-- planned | in progress | review | done -->
+**Status:** review (branch verdict READY after one fix round; waits for the in-game check)  <!-- planned | in progress | review | done -->
 **Created:** 2026-10-29 · **Depends on:** `core-scoreboard` (#7) and `core-chat-join` (#12), both merged. Phase 1 of `docs/briefs/ROADMAP.md`, which the user skipped earlier and then asked for on 2026-10-29 ("Fase 1 met tab mag nu alsnog").
 
 ## Goal
@@ -67,8 +67,8 @@ None blocking. Defaults decided by the orchestrator (overrule in review): Englis
 | Agent | Status | Branch | Verdict | Notes |
 |---|---|---|---|---|
 | resource-pack-researcher | done | feature branch | n/a | `docs/research/core-tab-apis.md` committed |
-| plugin-coder | planned | `core-tab/plugin-coder` | | |
-| plugin-tester | planned | `core-tab/plugin-tester` | | |
+| plugin-coder | done (merged, one fix round) | `core-tab/plugin-coder` | READY | New `tab` package; shared `rank` package (`Ranks`, `RankSettings`, rank sources moved out of `chat`) with `RankSource#order`; `text/TabText` for the Paper calls. `tab.enabled: false` or shutdown resets players once to vanilla (name, order 0, empty header/footer): a deviation from the brief's "nothing is sent", kept by the orchestrator. M-1 fixed: a LuckPerms weight of 0 means "no weight", so the `chat.yml` order applies. One rank refresh per join (`refreshIfAbsent`; `TabListener` at HIGHEST after chat's `JoinListener`). |
+| plugin-tester | done (merged) | `core-tab/plugin-tester` | READY | 282 tests; `docs/reviews/2026-10-29-core-tab.md` (two rounds); new architecture rule: the Paper tab calls live only in `tab/` and `text/TabText` |
 
 ## Merge order
 1. research note (direct on the feature branch)
