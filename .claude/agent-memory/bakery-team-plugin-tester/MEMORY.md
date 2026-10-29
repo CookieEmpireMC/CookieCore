@@ -1,6 +1,6 @@
 # Plugin-tester memory (CookieCore)
 
-- [Review ledger](reviews-ledger.md) — core-chat-join READY after round 2 (2026-10-28; open LOWs listed); core-moderation-mutes/bans/warns, core-scoreboard, core-gamemode, core-tidy, core-foundation (see the file)
-- [Test techniques for CookieCore](test-techniques.md) — server-free tests: Proxy senders/plugins, FakePlayer and ChatFixture, Brigadier dispatcher, JavaPlugin seams, VanillaArgumentProvider stand-in, ModerationFixture (H2 + real services), login and join/quit event ctors, timing without JMH
-- [Environment gotchas](env-gotchas.md) — mise run check ~20 s; single-class mvn run; sleep blocked; cd /c/... not C:\; rm -rf gate even for no-ops (rm -f ok); worktree branch switch for tester; ownership-check fails here
-- [sources.md](sources.md) — verified lookups: paper-api jar (PluginMeta, MavenLibraryResolver, Commands.register, VanillaArgumentProvider, PlayerQuitEvent, PlayerJoinEvent, AsyncChatEvent, isOnGround, AsyncPlayerPreLoginEvent ctors), MiniMessage lenient vs strict probe
+- [Review ledger](reviews-ledger.md) — core-tab NOT READY (M-1 rank order, 2026-10-29; re-review the M-1 fix); core-chat-join READY round 2 (open LOWs); core-moderation-mutes/bans/warns, core-scoreboard, core-gamemode, core-tidy, core-foundation
+- [Test techniques for CookieCore](test-techniques.md) — server-free tests: Proxy senders/plugins, FakePlayer and ChatFixture, Brigadier dispatcher, JavaPlugin seams, VanillaArgumentProvider stand-in, ModerationFixture, join/quit event ctors, tab fake sink and TabService ctor, timing without JMH
+- [Environment gotchas](env-gotchas.md) — mise blocked from Bash 2026-10-29: use mvn.cmd with JAVA_HOME (temurin-25.0.4) and the mise Maven; single-class mvn run; sleep blocked; cd /c/... not C:\; rm -rf gate (rm -f ok); worktree branch switch for tester
+- [sources.md](sources.md) — verified lookups: paper-api jar (PluginMeta, MavenLibraryResolver, Commands.register, VanillaArgumentProvider, PlayerQuitEvent, PlayerJoinEvent, AsyncChatEvent, isOnGround, AsyncPlayerPreLoginEvent ctors, Player tab methods not deprecated), MiniMessage lenient vs strict probe

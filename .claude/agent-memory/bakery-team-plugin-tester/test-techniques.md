@@ -53,3 +53,11 @@ Verified 2026-10-28 (core-chat-join, tester branch), stable for 26.3.build.205:
   - Round 2 (2026-10-28): `new AsyncChatEvent(true, player, new HashSet<Audience>(), ChatRenderer.defaultRenderer(), msg, msg, signedProxy)` works without a server (a SignedMessage Proxy returning defaults). Run `mute.onChat(e)`, then `chat.onChat(e)` only when `!e.isCancelled()` (the server skips ignoreCancelled listeners). `e.renderer().render(player, name, msg, viewer)` gives the public line.
   - `ChatModule` cannot be built in tests (JavaPlugin). Test a production predicate only through a package-private static seam; otherwise the test mirrors the expression (ChatListenerTest, a49eeb4 review).
   - Reflection guard for a field read from another thread: `Class.forName(name, false, loader).getDeclaredField(x)` + `Modifier.isVolatile` (ArchitectureRulesTest, 2026-10-28).
+
+Verified 2026-10-29 (core-tab, tester branch), stable for 26.3.build.205:
+  - Tab service tests (`tab/TabServiceTest`): package-private `TabService(Repeater, Logger, PlaceholderRegistry, TabConfig, TabSink, RankSource, BooleanSupplier, Supplier<String>)`. A `Player` Proxy with getName/getUniqueId/isOnline/equals is enough (the service keys by UUID). The `TabSink` fake is an inner class recording one line per packet (`hf`, `name`, `order`); `Repeater` fake returns a counting cancel and keeps the Runnable; `tick()` = run the last one (never a cancelled one).
+  - `TabConfig(FileSource, jarCopy)`: `() -> Optional.of(TestSupport.yaml(text))` and `Optional::empty`; a throwing lambda with `YamlFiles.BadYamlException` works for the broken-file rules.
+  - Registry: `BuiltInPlaceholders.ALL` is only `player server online max ping`, so a plugin CAN register `tps` or `rank_prefix` (the tab list's built-ins win by a filter in `CompiledTab.BUILT_IN`).
+  - LuckPerms path: `RankSource` is a functional interface with two defaults; anonymous sources with `null` players are enough for the `orElse` tests (`rank/RankSettingsTest`).
+  - Throwaway timing (deleted): a `TabSink` anonymous class plus 200 Player proxies, 3000 warm-up ticks, 500 timed; 26 us quiet tick, 1.6 ms when all header/footer change.
+  - `mvn -B -q test -Dtest=...` with `-Djunit.jupiter.conditions.deactivate=org.junit.*DisabledCondition` runs `@Disabled` tests (confirmed the M-1 test fails with `expected: <2> but was: <0>`).
