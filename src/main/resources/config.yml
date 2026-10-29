@@ -10,6 +10,10 @@ scoreboard:
   # The sidebar for every player; its lines are in scoreboard.yml. Players can hide it with /scoreboard toggle.
   enabled: true
 
+tab:
+  # The tab list: header, footer and the rank prefix and order of the names; all texts are in tab.yml.
+  enabled: true
+
 chat:
   # The chat layer: chat format and ranks, join/quit lines, welcome, server-list MOTD, /msg, /r and /sc (all set in chat.yml).
   # Restart the server to change it.
