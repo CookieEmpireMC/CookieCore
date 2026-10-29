@@ -234,11 +234,11 @@ class ArchitectureRulesTest {
     void luckPermsIsReferencedOnlyByTheLuckPermsRankSource() throws IOException {
         List<String> found = new ArrayList<>();
         for (Line l : code()) {
-            if (l.text().contains("net.luckperms") && !l.file().equals("chat/LuckPermsRankSource.java")) {
+            if (l.text().contains("net.luckperms") && !l.file().equals("rank/LuckPermsRankSource.java")) {
                 found.add(l.where());
             }
         }
-        assertNone(found, "net.luckperms outside chat/LuckPermsRankSource.java");
+        assertNone(found, "net.luckperms outside rank/LuckPermsRankSource.java");
     }
 
     /**
